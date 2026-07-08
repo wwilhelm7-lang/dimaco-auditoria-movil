@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Auditoría de Rack — DIMACO</title>
+<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f2f5;color:#1a1a2e}
+#wa-banner{display:none;background:#b71c1c;color:white;padding:12px 16px;font-size:13px;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:9999}
+#wa-banner strong{font-size:14px}
+#wa-banner button{background:white;color:#b71c1c;border:none;border-radius:6px;padding:8px 12px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
+#wa-banner .wa-x{background:transparent;color:rgba(255,255,255,.7);border:none;font-size:18px;cursor:pointer;margin-left:auto;padding:0 4px}
+.screen{display:none;min-height:100vh;flex-direction:column}
+.splash{background:#1a3a6b;color:white;padding:32px 20px;flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+.splash-logo{font-size:52px;margin-bottom:12px}
+.splash-title{font-size:22px;font-weight:900;margin-bottom:4px}
+.splash-sub{font-size:13px;opacity:.75;margin-bottom:22px}
+.splash-info{background:rgba(255,255,255,.13);border-radius:10px;padding:14px 16px;margin-bottom:24px;width:100%;max-width:360px;font-size:13px;line-height:2.1;text-align:left}
+.inp-name{width:100%;max-width:360px;padding:14px;font-size:16px;border:none;border-radius:10px;text-align:center;font-weight:700;text-transform:uppercase;margin-bottom:14px}
+.btn-start{background:#43a047;color:white;border:none;border-radius:12px;padding:17px 32px;font-size:17px;font-weight:800;width:100%;max-width:360px;cursor:pointer}
+.topbar{background:#1a3a6b;color:white;padding:12px 14px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:100}
+.topbar-loc{font-size:16px;font-weight:900;flex:1}
+.topbar-prog{font-size:12px;opacity:.75;white-space:nowrap}
+.progress-bar{height:5px;background:rgba(0,0,0,.15)}
+.progress-fill{height:5px;background:#43a047;transition:width .3s}
+.loc-content{flex:1;padding:10px;overflow-y:auto}
+.prod-card{background:white;border-radius:10px;padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.prod-cod{font-size:10px;color:#888;font-weight:700;margin-bottom:2px}
+.prod-nom{font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:10px;line-height:1.35}
+.prod-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.prod-sis{font-size:11px;color:#666;flex:1;min-width:80px}
+.prod-sis strong{color:#1a3a6b}
+.qty-inp{width:68px;padding:8px;border:2px solid #c5cae9;border-radius:8px;font-size:18px;font-weight:700;text-align:center;color:#1a3a6b}
+.qty-inp:focus{border-color:#1a3a6b;outline:none}
+.btn-ok{padding:10px 14px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#e8f5e9;color:#2e7d32;white-space:nowrap}
+.btn-ok.confirmed{background:#2e7d32;color:white}
+.btn-remove{background:none;border:none;color:#ccc;font-size:20px;cursor:pointer;padding:4px 8px}
+.empty-loc{background:white;border-radius:10px;padding:20px;text-align:center;color:#aaa;font-size:13px;margin-bottom:10px}
+.btn-add{background:white;border:2px dashed #c5cae9;border-radius:10px;padding:14px;width:100%;font-size:13px;color:#7986cb;font-weight:700;cursor:pointer;margin-bottom:8px}
+.add-form{background:white;border-radius:10px;padding:14px;margin-bottom:10px;display:none}
+.add-form.open{display:block}
+.add-search-wrap{position:relative;margin-bottom:8px}
+.add-search{width:100%;padding:10px;border:1px solid #c5cae9;border-radius:8px;font-size:14px;box-sizing:border-box}
+.add-sugs{display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #c5cae9;border-top:none;border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.sug-item{padding:10px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;display:flex;flex-direction:column}
+.sug-item:active{background:#e3f2fd}
+.sug-cod{font-size:10px;color:#7986cb;font-weight:700}
+.sug-nom{font-size:13px;color:#1a1a2e}
+.add-cant-inp{width:100%;padding:10px;border:1px solid #c5cae9;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box}
+.btn-add-confirm{background:#1a3a6b;color:white;border:none;border-radius:8px;padding:12px 18px;font-size:14px;font-weight:700;cursor:pointer;width:100%}
+.nav-bar{display:flex;gap:8px;padding:10px;background:white;border-top:1px solid #e0e0e0}
+.btn-nav{flex:1;padding:16px;border:1px solid #c5cae9;border-radius:10px;font-size:15px;font-weight:700;background:white;cursor:pointer}
+.btn-nav.primary{background:#1a3a6b;color:white;border-color:#1a3a6b}
+.btn-nav.success{background:#2e7d32;color:white;border-color:#2e7d32}
+.summary{background:#1a3a6b;color:white;padding:24px;flex:1;display:flex;flex-direction:column;align-items:center}
+.summary-title{font-size:21px;font-weight:900;margin-bottom:20px;text-align:center}
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;width:100%;max-width:380px}
+.kpi{background:rgba(255,255,255,.13);border-radius:10px;padding:14px;text-align:center}
+.kpi-v{font-size:30px;font-weight:900}
+.kpi-l{font-size:11px;opacity:.8;margin-top:4px}
+.btn-export{background:#43a047;color:white;border:none;border-radius:12px;padding:18px;font-size:17px;font-weight:800;width:100%;max-width:380px;cursor:pointer;margin-bottom:10px}
+.btn-reiniciar{background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.3);border-radius:12px;padding:14px;font-size:14px;font-weight:700;width:100%;max-width:380px;cursor:pointer}
+.badge-nuevo{background:#ff6f00;color:white;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px;margin-left:5px;vertical-align:middle}
+.export-area{display:none;margin-top:12px;width:100%;max-width:380px}
+.export-ta{width:100%;height:110px;font-size:10px;font-family:monospace;border-radius:8px;border:none;padding:8px;box-sizing:border-box}
+.btn-fin-aqui{background:rgba(0,0,0,.12);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer}
+.err-box{background:#1a3a6b;color:white;padding:32px 20px;flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+.err-box .em{font-size:44px;margin-bottom:14px}
+</style>
+</head>
+<body>
+
+<div id="wa-banner">
+  <div style="flex:1;line-height:1.6">
+    <strong>⚠ Para mejor funcionamiento, abre en Safari o Chrome</strong><br>
+    <span style="font-size:11px;opacity:.9">
+      🍎 <strong>iPhone:</strong> toca ⋯ o ⬆ (compartir) → <em>Abrir en Safari</em>.<br>
+      🤖 <strong>Android:</strong> toca ⋮ → <em>Abrir en Chrome</em>
+    </span>
+  </div>
+  <button class="wa-x" onclick="this.parentElement.style.display='none'">✕</button>
+</div>
+
+<div id="screen-error" class="screen" style="display:none">
+  <div class="err-box">
+    <div class="em">⚠️</div>
+    <div class="splash-title">Link inválido o incompleto</div>
+    <div class="splash-sub" id="err-msg" style="max-width:320px;margin-top:10px;opacity:.9">Pide al supervisor que te reenvíe el link completo por WhatsApp (a veces se corta al copiarlo).</div>
+  </div>
+</div>
+
+<div id="screen-splash" class="screen">
+  <div class="splash">
+    <div class="splash-logo">🏭</div>
+    <div class="splash-title">Auditoría de Rack</div>
+    <div class="splash-sub">DIMACO — Control de Inventario</div>
+    <div class="splash-info" id="splash-info"></div>
+    <input id="inp-operario" class="inp-name" type="text" placeholder="Tu nombre (opcional)" autocomplete="off">
+    <div id="splash-err" style="display:none;color:#ffccbc;font-size:13px;margin-bottom:8px;padding:8px 12px;background:rgba(0,0,0,.3);border-radius:8px;width:100%;max-width:360px;text-align:left"></div>
+    <button id="btn-start" class="btn-start" type="button">▶ COMENZAR AUDITORÍA</button>
+  </div>
+</div>
+
+<div id="screen-audit" class="screen">
+  <div class="topbar"><div class="topbar-loc" id="topbar-loc">—</div><div class="topbar-prog" id="topbar-prog">0/0</div></div>
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  <div class="loc-content" id="loc-prods"></div>
+  <div style="padding:0 10px 4px">
+    <button id="btn-add-btn" type="button" class="btn-add">＋ Agregar producto no registrado</button>
+    <div class="add-form" id="add-form">
+      <div class="add-search-wrap">
+        <input id="add-buscar" class="add-search" type="text" placeholder="Busca por código SAP o descripción..." autocomplete="off">
+        <div id="add-sugs" class="add-sugs"></div>
+      </div>
+      <input id="add-cod-h" type="hidden">
+      <input id="add-nom-h" type="hidden">
+      <input id="add-cant" class="add-cant-inp" type="number" min="0" value="1" placeholder="Cantidad física">
+      <button id="btn-add-confirm" type="button" class="btn-add-confirm">✓ Agregar producto</button>
+    </div>
+  </div>
+  <div style="padding:0 10px 4px;text-align:right">
+    <button id="btn-finalizar-aqui" type="button" class="btn-fin-aqui">💾 Guardar y finalizar aquí</button>
+  </div>
+  <div class="nav-bar">
+    <button type="button" class="btn-nav" id="btn-ant" style="display:none">← Anterior</button>
+    <button type="button" class="btn-nav primary" id="btn-sig">Siguiente →</button>
+  </div>
+</div>
+
+<div id="screen-summary" class="screen">
+  <div class="summary">
+    <div class="summary-title">✅ Auditoría Guardada</div>
+    <div id="summary-parcial" style="display:none;background:rgba(255,152,0,.25);border:1px solid rgba(255,152,0,.5);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;line-height:1.7;text-align:left;width:100%;max-width:380px">
+      ⚠ <strong>Auditoría parcial</strong> — solo se exportarán las ubicaciones que revisaste. El supervisor verá exactamente cuáles se auditaron.
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-v" id="kpi-locs">—</div><div class="kpi-l" id="kpi-locs-lbl">Ubicaciones</div></div>
+      <div class="kpi"><div class="kpi-v" id="kpi-prods">—</div><div class="kpi-l">Productos</div></div>
+      <div class="kpi"><div class="kpi-v" id="kpi-ok" style="color:#81c784">—</div><div class="kpi-l">✓ Sin diferencias</div></div>
+      <div class="kpi"><div class="kpi-v" id="kpi-difs" style="color:#ff8a65">—</div><div class="kpi-l">⚠ Con diferencias</div></div>
+    </div>
+    <button id="btn-export" type="button" class="btn-export">⬇ Exportar resultados</button>
+    <button id="btn-reiniciar" type="button" class="btn-reiniciar">↺ Volver al inicio</button>
+    <div class="export-area" id="export-area">
+      <div id="export-instr" style="display:none;background:rgba(0,0,0,.35);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;line-height:1.7;text-align:left">
+        <strong>📋 No se pudo descargar el archivo (normal en WhatsApp/iPhone)</strong><br>
+        1. Toca el cuadro de texto de abajo para seleccionarlo todo<br>
+        2. Copia el texto (mantén presionado → Copiar todo)<br>
+        3. Pégalo en WhatsApp y envíaselo al supervisor<br>
+        4. El supervisor pega el texto en un archivo .json e importa
+      </div>
+      <textarea class="export-ta" id="export-ta" readonly onclick="this.select()" style="height:140px"></textarea>
+      <button type="button" id="btn-copy-json" style="margin-top:8px;background:white;color:#1a3a6b;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:700;width:100%;cursor:pointer">📋 Copiar todo el texto</button>
+    </div>
+    <p style="font-size:11px;opacity:.5;text-align:center;margin-top:10px">Envía el .json al supervisor para importarlo en la app</p>
+  </div>
+</div>
+
+<script>
+var _D=null,_UBICS=[],_idx=0,_op="",_R={},_visited=[];
+
+function _el(id){return document.getElementById(id);}
+function _showScr(id){
+  ["screen-error","screen-splash","screen-audit","screen-summary"].forEach(function(s){
+    var el=_el(s); if(el) el.style.display="none";
+  });
+  var t=_el(id); if(t) t.style.display=(id==="screen-audit"||id==="screen-summary")?"flex":"flex";
+}
+
+function _cargarDatos(){
+  var hash=(location.hash||"").slice(1);
+  if(!hash){ _mostrarError("Falta la información en el link."); return; }
+  var json;
+  try{
+    json = LZString.decompressFromEncodedURIComponent(hash);
+    if(!json) throw new Error("vacío");
+  }catch(e){ _mostrarError("No se pudo leer el link (dato corrupto)."); return; }
+  try{
+    _D = JSON.parse(json);
+  }catch(e){ _mostrarError("El link llegó incompleto o dañado."); return; }
+  if(!_D || _D._tipo!=="auditoria_movil_v1" || !_D.ubicaciones){
+    _mostrarError("Este link no corresponde a una auditoría válida.");
+    return;
+  }
+  _UBICS = Object.keys(_D.ubicaciones);
+  _op = _D.operarioSugerido||"";
+  _UBICS.forEach(function(u){
+    _R[u]=(_D.ubicaciones[u]||[]).map(function(p){
+      return{cod:p.cod,nombre:p.nombre,cantSistema:p.cantSistema,cantFisica:p.cantSistema,confirmado:false,esNuevo:false};
+    });
+  });
+  var totalU = _UBICS.length;
+  var fechaGen = _D._generado ? new Date(_D._generado).toLocaleDateString('es-CL') : '';
+  var opStr = _op ? ('<div>👷 <strong>'+_op+'</strong></div>') : '';
+  _el('splash-info').innerHTML =
+    '<div>📍 <strong>Zona '+_D.zona+'</strong> — '+(_D.nombreZona||'')+'</div>'+
+    '<div>📦 <strong>'+(_D.racks||[]).length+'</strong> rack'+((_D.racks||[]).length!==1?'s':'')+' · <strong>'+totalU+'</strong> ubicaciones</div>'+
+    '<div>📅 '+fechaGen+'</div>'+opStr;
+  if(_op) _el('inp-operario').value = _op;
+  _el('topbar-prog').textContent = '0/'+totalU;
+  _showScr('screen-splash');
+}
+
+function _mostrarError(msg){
+  _el('err-msg').textContent = msg;
+  _showScr('screen-error');
+}
+
+function comenzar(){
+  try{
+    var n=(_el("inp-operario").value||"").trim().toUpperCase()||"OPERARIO";
+    _op=n; _idx=0; renderLoc(); _showScr("screen-audit");
+  }catch(e){
+    var err=_el("splash-err");
+    if(err){err.textContent="Error: "+e.message;err.style.display="block";}
+  }
+}
+function makeProdCard(p,i){
+  var diff=p.cantFisica-p.cantSistema;
+  var card=document.createElement("div"); card.className="prod-card";
+  var cDiv=document.createElement("div"); cDiv.className="prod-cod"; cDiv.textContent=p.cod;
+  if(p.esNuevo){var b=document.createElement("span");b.className="badge-nuevo";b.textContent="NUEVO";cDiv.appendChild(b);}
+  card.appendChild(cDiv);
+  var nDiv=document.createElement("div"); nDiv.className="prod-nom"; nDiv.textContent=p.nombre||p.cod;
+  card.appendChild(nDiv);
+  var row=document.createElement("div"); row.className="prod-row";
+  var sDiv=document.createElement("div"); sDiv.className="prod-sis";
+  var dc=diff>0?"#1565c0":"#c62828";
+  sDiv.innerHTML="Sistema: <strong>"+p.cantSistema+"</strong>"+(diff!==0?" <span style='color:"+dc+";font-weight:800'>"+( diff>0?"+":"")+diff+"</span>":"");
+  row.appendChild(sDiv);
+  var inp=document.createElement("input"); inp.className="qty-inp"; inp.type="number"; inp.min="0"; inp.value=p.cantFisica;
+  if(diff!==0) inp.style.borderColor=dc;
+  (function(ii){inp.addEventListener("input",function(){_R[_UBICS[_idx]][ii].cantFisica=+this.value;renderLoc();});})(i);
+  row.appendChild(inp);
+  var okB=document.createElement("button"); okB.type="button";
+  okB.className="btn-ok"+(p.confirmado?" confirmed":""); okB.textContent=p.confirmado?"✓ OK":"OK";
+  (function(ii){okB.addEventListener("click",function(){_R[_UBICS[_idx]][ii].confirmado=!_R[_UBICS[_idx]][ii].confirmado;renderLoc();});})(i);
+  row.appendChild(okB);
+  if(p.esNuevo){
+    var rmB=document.createElement("button"); rmB.type="button"; rmB.className="btn-remove"; rmB.textContent="✕";
+    (function(ii){rmB.addEventListener("click",function(){_R[_UBICS[_idx]].splice(ii,1);renderLoc();});})(i);
+    row.appendChild(rmB);
+  }
+  card.appendChild(row);
+  return card;
+}
+function renderLoc(){
+  var ubic=_UBICS[_idx];
+  if(_visited.indexOf(ubic)<0) _visited.push(ubic);
+  var prods=_R[ubic]||[];
+  var pct=_UBICS.length?Math.round((_idx/_UBICS.length)*100):0;
+  _el("topbar-loc").textContent=ubic;
+  _el("topbar-prog").textContent=(_idx+1)+" / "+_UBICS.length;
+  _el("progress-fill").style.width=pct+"%";
+  var cont=_el("loc-prods"); cont.innerHTML="";
+  if(!prods.length){
+    var emp=document.createElement("div"); emp.className="empty-loc";
+    emp.innerHTML="📭 <strong>Vacía en sistema</strong><br><small>Si hay productos físicos aquí, agrégalos abajo</small>";
+    cont.appendChild(emp);
+  } else {
+    prods.forEach(function(p,i){ cont.appendChild(makeProdCard(p,i)); });
+  }
+  _el("btn-ant").style.display=_idx===0?"none":"";
+  var isLast=_idx===_UBICS.length-1;
+  _el("btn-sig").textContent=isLast?"✅ Finalizar":"Siguiente →";
+  _el("btn-sig").className="btn-nav "+(isLast?"success":"primary");
+}
+function anterior(){if(_idx>0){_idx--;renderLoc();}}
+function siguiente(){if(_idx<_UBICS.length-1){_idx++;renderLoc();}else{mostrarResumen();}}
+function mostrarResumen(){
+  var tp=0,ok=0,difs=0,nuevos=0;
+  _visited.forEach(function(u){(_R[u]||[]).forEach(function(p){
+    tp++;if(p.esNuevo)nuevos++;else if(p.cant===p.cantSistema&&p.confirmado)ok++;else difs++;
+  });});
+  var parcial=_visited.length<_UBICS.length;
+  _el("kpi-locs").textContent=_visited.length+(parcial?" / "+_UBICS.length:"");
+  _el("kpi-locs-lbl").textContent=parcial?"Auditadas (parcial)":"Ubicaciones";
+  _el("kpi-prods").textContent=tp;
+  _el("kpi-ok").textContent=ok; _el("kpi-difs").textContent=difs+nuevos;
+  var alerta=_el("summary-parcial"); if(alerta) alerta.style.display=parcial?"block":"none";
+  _showScr("screen-summary");
+}
+function exportar(){
+  var resUbics={}; _visited.forEach(function(u){ if(_R[u]) resUbics[u]=_R[u]; });
+  var res={_tipo:"auditoria_movil_v1",_fecha:new Date().toISOString(),operario:_op,zona:_D.zona,racks:_D.racks,ubicaciones:resUbics,_visitadas:_visited.length,_totalUbics:_UBICS.length};
+  var json=JSON.stringify(res,null,2);
+  var ok=false;
+  try{
+    var blob=new Blob([json],{type:"application/json"});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement("a");
+    a.href=url; a.download="resultado_"+_D.zona+"_"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url); ok=true;
+  }catch(e){}
+  var ea=_el("export-area"); var ta=_el("export-ta");
+  if(ea) ea.style.display="block";
+  if(ta){ ta.value=json; setTimeout(function(){ta.select();},200); }
+  var msg=_el("export-instr");
+  if(msg) msg.style.display=ok?"none":"block";
+}
+var _bTimer=null;
+function buscarProd(){
+  clearTimeout(_bTimer);
+  _bTimer=setTimeout(function(){
+    var q=(_el("add-buscar").value||"").trim().toLowerCase();
+    var res=_el("add-sugs");
+    if(!res) return;
+    if(q.length<2){res.style.display="none";return;}
+    var cat=(_D&&_D.catalogo)||[];
+    var m=cat.filter(function(p){
+      if(!p.cod) return false;
+      return p.cod.toLowerCase().indexOf(q)>-1||(p.nombre||"").toLowerCase().indexOf(q)>-1;
+    }).slice(0,30);
+    if(!m.length){res.style.display="none";return;}
+    res.innerHTML="";
+    m.forEach(function(p){
+      var it=document.createElement("div"); it.className="sug-item";
+      var sc=document.createElement("span"); sc.className="sug-cod"; sc.textContent=p.cod;
+      var sn=document.createElement("span"); sn.className="sug-nom"; sn.textContent=p.nombre||"";
+      it.appendChild(sc); it.appendChild(sn);
+      it.addEventListener("mousedown",function(e){e.preventDefault();});
+      it.addEventListener("click",function(){
+        _el("add-buscar").value=p.cod+" — "+(p.nombre||"");
+        _el("add-cod-h").value=p.cod;
+        _el("add-nom-h").value=p.nombre||"";
+        res.style.display="none";
+        _el("add-cant").focus();
+      });
+      res.appendChild(it);
+    });
+    res.style.display="block";
+  },250);
+}
+function confirmarAgregar(){
+  var cod=(_el("add-cod-h").value||"").trim().toUpperCase();
+  var nom=(_el("add-nom-h").value||"").trim();
+  if(!cod){
+    var raw=(_el("add-buscar").value||"").trim().toUpperCase();
+    if(raw) cod=raw;
+  }
+  if(!cod){alert("Busca y selecciona un producto, o escribe el código SAP directamente");return;}
+  var cant=+(_el("add-cant").value)||1;
+  _R[_UBICS[_idx]].push({cod:cod,nombre:nom||cod,cantSistema:0,cantFisica:cant,confirmado:true,esNuevo:true});
+  _el("add-buscar").value=""; _el("add-cod-h").value=""; _el("add-nom-h").value=""; _el("add-cant").value="1";
+  _el("add-sugs").style.display="none";
+  _el("add-form").classList.remove("open");
+  renderLoc();
+}
+function finalizarAqui(){
+  if(!_visited.length){alert("Aún no has revisado ninguna ubicación.");return;}
+  mostrarResumen();
+}
+function showAddForm(){
+  var f=_el("add-form"); f.classList.toggle("open");
+  if(f.classList.contains("open")) _el("add-buscar").focus();
+}
+document.addEventListener("DOMContentLoaded",function(){
+  _cargarDatos();
+  if(!_D) return;
+  function _on(id,ev,fn){var el=_el(id);if(el)el.addEventListener(ev,fn);}
+  _on("btn-start","click",comenzar);
+  _on("btn-ant","click",anterior);
+  _on("btn-sig","click",siguiente);
+  _on("btn-finalizar-aqui","click",finalizarAqui);
+  _on("btn-add-btn","click",showAddForm);
+  _on("btn-add-confirm","click",confirmarAgregar);
+  var buscEl=_el("add-buscar");
+  if(buscEl){
+    buscEl.addEventListener("input",buscarProd);
+    buscEl.addEventListener("blur",function(){setTimeout(function(){var s=_el("add-sugs");if(s)s.style.display="none";},300);});
+  }
+  _on("btn-export","click",exportar);
+  _on("btn-reiniciar","click",function(){location.reload();});
+  _on("btn-copy-json","click",function(){
+    var ta=_el("export-ta"); if(!ta||!ta.value) return;
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(ta.value).then(function(){
+        var b=_el("btn-copy-json"); if(b){b.textContent="✅ Copiado";setTimeout(function(){b.textContent="📋 Copiar todo el texto";},2500);}
+      }).catch(function(){ta.select();document.execCommand("copy");});
+    } else { ta.select(); document.execCommand("copy"); }
+  });
+  var ua=navigator.userAgent||"";
+  var esWebView=ua.indexOf("WhatsApp")>-1||ua.indexOf("FBAN")>-1||ua.indexOf("Instagram")>-1||(ua.indexOf("wv")>-1&&ua.indexOf("Android")>-1);
+  if(esWebView){var b=_el("wa-banner");if(b)b.style.display="flex";}
+});
+</script>
+</body>
+</html>
