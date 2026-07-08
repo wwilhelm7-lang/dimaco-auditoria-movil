@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Auditoría de Rack — DIMACO</title>
+<title>Auditoría Móvil — DIMACO</title>
 <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -93,13 +93,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 
 <div id="screen-splash" class="screen">
   <div class="splash">
-    <div class="splash-logo">🏭</div>
-    <div class="splash-title">Auditoría de Rack</div>
+    <div class="splash-logo" id="splash-logo">🏭</div>
+    <div class="splash-title" id="splash-title">Auditoría de Rack</div>
     <div class="splash-sub">DIMACO — Control de Inventario</div>
     <div class="splash-info" id="splash-info"></div>
     <input id="inp-operario" class="inp-name" type="text" placeholder="Tu nombre (opcional)" autocomplete="off">
     <div id="splash-err" style="display:none;color:#ffccbc;font-size:13px;margin-bottom:8px;padding:8px 12px;background:rgba(0,0,0,.3);border-radius:8px;width:100%;max-width:360px;text-align:left"></div>
-    <button id="btn-start" class="btn-start" type="button">▶ COMENZAR AUDITORÍA</button>
+    <button id="btn-start" class="btn-start" type="button">▶ COMENZAR</button>
   </div>
 </div>
 
@@ -158,15 +158,52 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
   </div>
 </div>
 
+<div id="screen-conteo" class="screen">
+  <div class="topbar"><div class="topbar-loc" id="cp-topbar-cod">—</div><div class="topbar-prog" id="cp-topbar-prog">0/0</div></div>
+  <div class="progress-bar"><div class="progress-fill" id="cp-progress-fill" style="width:0%"></div></div>
+  <div class="loc-content" id="cp-content"></div>
+  <div class="nav-bar">
+    <button type="button" class="btn-nav" id="cp-btn-ant" style="display:none">← Anterior</button>
+    <button type="button" class="btn-nav primary" id="cp-btn-sig">Siguiente →</button>
+  </div>
+</div>
+
+<div id="screen-summary-cp" class="screen">
+  <div class="summary">
+    <div class="summary-title">✅ Conteo Guardado</div>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-v" id="cp-kpi-total">—</div><div class="kpi-l">Productos</div></div>
+      <div class="kpi"><div class="kpi-v" id="cp-kpi-ok" style="color:#81c784">—</div><div class="kpi-l">✓ Sin diferencias</div></div>
+      <div class="kpi"><div class="kpi-v" id="cp-kpi-difs" style="color:#ff8a65">—</div><div class="kpi-l">⚠ Con diferencias</div></div>
+      <div class="kpi"><div class="kpi-v" id="cp-kpi-noenc" style="color:#ffb74d">—</div><div class="kpi-l">❓ No encontrados</div></div>
+    </div>
+    <button id="cp-btn-export" type="button" class="btn-export">⬇ Exportar resultados</button>
+    <button id="cp-btn-reiniciar" type="button" class="btn-reiniciar">↺ Volver al inicio</button>
+    <div class="export-area" id="cp-export-area">
+      <div id="cp-export-instr" style="display:none;background:rgba(0,0,0,.35);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;line-height:1.7;text-align:left">
+        <strong>📋 No se pudo descargar el archivo (normal en WhatsApp/iPhone)</strong><br>
+        1. Toca el cuadro de texto de abajo para seleccionarlo todo<br>
+        2. Copia el texto (mantén presionado → Copiar todo)<br>
+        3. Pégalo en WhatsApp y envíaselo al supervisor<br>
+        4. El supervisor pega el texto en un archivo .json e importa
+      </div>
+      <textarea class="export-ta" id="cp-export-ta" readonly onclick="this.select()" style="height:140px"></textarea>
+      <button type="button" id="cp-btn-copy-json" style="margin-top:8px;background:white;color:#1a3a6b;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:700;width:100%;cursor:pointer">📋 Copiar todo el texto</button>
+    </div>
+    <p style="font-size:11px;opacity:.5;text-align:center;margin-top:10px">Envía el .json al supervisor para importarlo en la app</p>
+  </div>
+</div>
+
 <script>
 var _D=null,_UBICS=[],_idx=0,_op="",_R={},_visited=[];
+var _CPROD=[],_cpIdx=0,_cpR={};
 
 function _el(id){return document.getElementById(id);}
 function _showScr(id){
-  ["screen-error","screen-splash","screen-audit","screen-summary"].forEach(function(s){
+  ["screen-error","screen-splash","screen-audit","screen-summary","screen-conteo","screen-summary-cp"].forEach(function(s){
     var el=_el(s); if(el) el.style.display="none";
   });
-  var t=_el(id); if(t) t.style.display=(id==="screen-audit"||id==="screen-summary")?"flex":"flex";
+  var t=_el(id); if(t) t.style.display="flex";
 }
 
 function _cargarDatos(){
@@ -180,26 +217,38 @@ function _cargarDatos(){
   try{
     _D = JSON.parse(json);
   }catch(e){ _mostrarError("El link llegó incompleto o dañado."); return; }
-  if(!_D || _D._tipo!=="auditoria_movil_v1" || !_D.ubicaciones){
+  if(!_D || (_D._tipo!=="auditoria_movil_v1" && _D._tipo!=="conteo_producto_v1")){
     _mostrarError("Este link no corresponde a una auditoría válida.");
     return;
   }
-  _UBICS = Object.keys(_D.ubicaciones);
   _op = _D.operarioSugerido||"";
-  _UBICS.forEach(function(u){
-    _R[u]=(_D.ubicaciones[u]||[]).map(function(p){
-      return{cod:p.cod,nombre:p.nombre,cantSistema:p.cantSistema,cantFisica:p.cantSistema,confirmado:false,esNuevo:false};
-    });
-  });
-  var totalU = _UBICS.length;
   var fechaGen = _D._generado ? new Date(_D._generado).toLocaleDateString('es-CL') : '';
   var opStr = _op ? ('<div>👷 <strong>'+_op+'</strong></div>') : '';
-  _el('splash-info').innerHTML =
-    '<div>📍 <strong>Zona '+_D.zona+'</strong> — '+(_D.nombreZona||'')+'</div>'+
-    '<div>📦 <strong>'+(_D.racks||[]).length+'</strong> rack'+((_D.racks||[]).length!==1?'s':'')+' · <strong>'+totalU+'</strong> ubicaciones</div>'+
-    '<div>📅 '+fechaGen+'</div>'+opStr;
+  if(_D._tipo==="conteo_producto_v1"){
+    _CPROD = _D.productos||[];
+    _CPROD.forEach(function(p){ _cpR[p.cod] = {hallazgos:[]}; });
+    _el('splash-logo').textContent = '📦';
+    _el('splash-title').textContent = 'Conteo de Productos';
+    _el('splash-info').innerHTML =
+      '<div>🔢 <strong>'+_CPROD.length+'</strong> producto'+(_CPROD.length!==1?'s':'')+' a contar</div>'+
+      '<div>📅 '+fechaGen+'</div>'+opStr;
+  } else {
+    _UBICS = Object.keys(_D.ubicaciones);
+    _UBICS.forEach(function(u){
+      _R[u]=(_D.ubicaciones[u]||[]).map(function(p){
+        return{cod:p.cod,nombre:p.nombre,cantSistema:p.cantSistema,cantFisica:p.cantSistema,confirmado:false,esNuevo:false};
+      });
+    });
+    var totalU = _UBICS.length;
+    _el('splash-logo').textContent = '🏭';
+    _el('splash-title').textContent = 'Auditoría de Rack';
+    _el('splash-info').innerHTML =
+      '<div>📍 <strong>Zona '+_D.zona+'</strong> — '+(_D.nombreZona||'')+'</div>'+
+      '<div>📦 <strong>'+(_D.racks||[]).length+'</strong> rack'+((_D.racks||[]).length!==1?'s':'')+' · <strong>'+totalU+'</strong> ubicaciones</div>'+
+      '<div>📅 '+fechaGen+'</div>'+opStr;
+    _el('topbar-prog').textContent = '0/'+totalU;
+  }
   if(_op) _el('inp-operario').value = _op;
-  _el('topbar-prog').textContent = '0/'+totalU;
   _showScr('screen-splash');
 }
 
@@ -211,7 +260,12 @@ function _mostrarError(msg){
 function comenzar(){
   try{
     var n=(_el("inp-operario").value||"").trim().toUpperCase()||"OPERARIO";
-    _op=n; _idx=0; renderLoc(); _showScr("screen-audit");
+    _op=n;
+    if(_D._tipo==="conteo_producto_v1"){
+      _cpIdx=0; cpRenderItem(); _showScr("screen-conteo");
+    } else {
+      _idx=0; renderLoc(); _showScr("screen-audit");
+    }
   }catch(e){
     var err=_el("splash-err");
     if(err){err.textContent="Error: "+e.message;err.style.display="block";}
@@ -357,6 +411,126 @@ function showAddForm(){
   var f=_el("add-form"); f.classList.toggle("open");
   if(f.classList.contains("open")) _el("add-buscar").focus();
 }
+
+// ==================== CONTEO DE PRODUCTOS (por SKU) ====================
+function cpRenderItem(){
+  var p=_CPROD[_cpIdx];
+  var st=_cpR[p.cod];
+  _el('cp-topbar-cod').textContent=p.cod;
+  _el('cp-topbar-prog').textContent=(_cpIdx+1)+" / "+_CPROD.length;
+  var pct=_CPROD.length?Math.round((_cpIdx/_CPROD.length)*100):0;
+  _el('cp-progress-fill').style.width=pct+"%";
+  var cont=_el('cp-content'); cont.innerHTML="";
+
+  var card=document.createElement("div"); card.className="prod-card";
+  var cDiv=document.createElement("div"); cDiv.className="prod-cod"; cDiv.textContent=p.cod;
+  card.appendChild(cDiv);
+  var nDiv=document.createElement("div"); nDiv.className="prod-nom"; nDiv.textContent=p.nombre||p.cod;
+  card.appendChild(nDiv);
+  var sisDiv=document.createElement("div"); sisDiv.style.cssText="font-size:12px;color:#666;margin-bottom:8px";
+  sisDiv.innerHTML="Sistema: <strong>"+p.cantSistema+"</strong> unidades";
+  card.appendChild(sisDiv);
+  if(p.ubicsSistema && p.ubicsSistema.length){
+    var hint=document.createElement("div");
+    hint.style.cssText="font-size:11px;color:#7986cb;margin-bottom:4px;background:#f0f2ff;padding:8px;border-radius:8px";
+    hint.innerHTML="📍 Según sistema debería estar en: "+p.ubicsSistema.map(function(u){return u.ubic+" ("+u.cantidad+")";}).join(", ");
+    card.appendChild(hint);
+  }
+  cont.appendChild(card);
+
+  var rowsWrap=document.createElement("div"); rowsWrap.id="cp-rows";
+  cont.appendChild(rowsWrap);
+  cpRenderRows();
+
+  var addBtn=document.createElement("button"); addBtn.type="button"; addBtn.className="btn-add";
+  addBtn.textContent="＋ Agregar ubicación encontrada";
+  addBtn.addEventListener("click",function(){ st.hallazgos.push({ubic:"",cantidad:0}); cpRenderRows(); cpActualizarTotal(); });
+  cont.appendChild(addBtn);
+
+  var totalDiv=document.createElement("div"); totalDiv.id="cp-total";
+  totalDiv.style.cssText="text-align:center;font-size:15px;font-weight:800;color:#1a3a6b;margin-top:6px";
+  cont.appendChild(totalDiv);
+  cpActualizarTotal();
+
+  _el("cp-btn-ant").style.display=_cpIdx===0?"none":"";
+  var isLast=_cpIdx===_CPROD.length-1;
+  _el("cp-btn-sig").textContent=isLast?"✅ Finalizar":"Siguiente →";
+  _el("cp-btn-sig").className="btn-nav "+(isLast?"success":"primary");
+}
+function cpRenderRows(){
+  var p=_CPROD[_cpIdx];
+  var st=_cpR[p.cod];
+  var wrap=_el("cp-rows"); if(!wrap) return;
+  wrap.innerHTML="";
+  if(!st.hallazgos.length){
+    var emp=document.createElement("div"); emp.className="empty-loc";
+    emp.innerHTML="📭 Sin ubicaciones agregadas todavía.<br><small>Toca \"Agregar ubicación encontrada\" o déjalo así si no lo encontraste.</small>";
+    wrap.appendChild(emp);
+    return;
+  }
+  st.hallazgos.forEach(function(h,i){
+    var row=document.createElement("div"); row.className="prod-row"; row.style.marginBottom="8px";
+    var ubicInp=document.createElement("input"); ubicInp.type="text"; ubicInp.placeholder="Ubicación (ej A-01-02-03)";
+    ubicInp.value=h.ubic;
+    ubicInp.style.cssText="flex:2;min-width:130px;padding:8px;border:2px solid #c5cae9;border-radius:8px;font-size:13px";
+    ubicInp.addEventListener("input",function(){ h.ubic=this.value; });
+    row.appendChild(ubicInp);
+    var qtyInp=document.createElement("input"); qtyInp.type="number"; qtyInp.min="0"; qtyInp.className="qty-inp"; qtyInp.value=h.cantidad;
+    qtyInp.addEventListener("input",function(){ h.cantidad=+this.value||0; cpActualizarTotal(); });
+    row.appendChild(qtyInp);
+    var rmB=document.createElement("button"); rmB.type="button"; rmB.className="btn-remove"; rmB.textContent="✕";
+    rmB.addEventListener("click",function(){ st.hallazgos.splice(i,1); cpRenderRows(); cpActualizarTotal(); });
+    row.appendChild(rmB);
+    wrap.appendChild(row);
+  });
+}
+function cpActualizarTotal(){
+  var p=_CPROD[_cpIdx]; var st=_cpR[p.cod];
+  var total=st.hallazgos.reduce(function(s,h){return s+(+h.cantidad||0);},0);
+  var d=_el("cp-total"); if(d) d.textContent="Total contado: "+total;
+}
+function cpAnterior(){ if(_cpIdx>0){_cpIdx--; cpRenderItem();} }
+function cpSiguiente(){ if(_cpIdx<_CPROD.length-1){_cpIdx++; cpRenderItem();} else { cpMostrarResumen(); } }
+function cpMostrarResumen(){
+  var sinDif=0, conDif=0, noEnc=0;
+  _CPROD.forEach(function(p){
+    var st=_cpR[p.cod];
+    var total=st.hallazgos.reduce(function(s,h){return s+(+h.cantidad||0);},0);
+    if(!st.hallazgos.length || total===0) noEnc++;
+    else if(total===p.cantSistema) sinDif++;
+    else conDif++;
+  });
+  _el("cp-kpi-total").textContent=_CPROD.length;
+  _el("cp-kpi-ok").textContent=sinDif;
+  _el("cp-kpi-difs").textContent=conDif;
+  _el("cp-kpi-noenc").textContent=noEnc;
+  _showScr("screen-summary-cp");
+}
+function cpExportar(){
+  var productos=_CPROD.map(function(p){
+    var st=_cpR[p.cod];
+    var hallazgos=st.hallazgos.filter(function(h){return h.ubic || h.cantidad;});
+    var cantContada=hallazgos.reduce(function(s,h){return s+(+h.cantidad||0);},0);
+    return {cod:p.cod,nombre:p.nombre,cantSistema:p.cantSistema,hallazgos:hallazgos,cantContada:cantContada};
+  });
+  var res={_tipo:"conteo_producto_v1",_fecha:new Date().toISOString(),operario:_op,productos:productos};
+  var json=JSON.stringify(res,null,2);
+  var ok=false;
+  try{
+    var blob=new Blob([json],{type:"application/json"});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement("a");
+    a.href=url; a.download="conteo_productos_"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url); ok=true;
+  }catch(e){}
+  var ea=_el("cp-export-area"); var ta=_el("cp-export-ta");
+  if(ea) ea.style.display="block";
+  if(ta){ ta.value=json; setTimeout(function(){ta.select();},200); }
+  var msg=_el("cp-export-instr");
+  if(msg) msg.style.display=ok?"none":"block";
+}
+
 document.addEventListener("DOMContentLoaded",function(){
   _cargarDatos();
   if(!_D) return;
@@ -379,6 +553,18 @@ document.addEventListener("DOMContentLoaded",function(){
     if(navigator.clipboard&&navigator.clipboard.writeText){
       navigator.clipboard.writeText(ta.value).then(function(){
         var b=_el("btn-copy-json"); if(b){b.textContent="✅ Copiado";setTimeout(function(){b.textContent="📋 Copiar todo el texto";},2500);}
+      }).catch(function(){ta.select();document.execCommand("copy");});
+    } else { ta.select(); document.execCommand("copy"); }
+  });
+  _on("cp-btn-ant","click",cpAnterior);
+  _on("cp-btn-sig","click",cpSiguiente);
+  _on("cp-btn-export","click",cpExportar);
+  _on("cp-btn-reiniciar","click",function(){location.reload();});
+  _on("cp-btn-copy-json","click",function(){
+    var ta=_el("cp-export-ta"); if(!ta||!ta.value) return;
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(ta.value).then(function(){
+        var b=_el("cp-btn-copy-json"); if(b){b.textContent="✅ Copiado";setTimeout(function(){b.textContent="📋 Copiar todo el texto";},2500);}
       }).catch(function(){ta.select();document.execCommand("copy");});
     } else { ta.select(); document.execCommand("copy"); }
   });
