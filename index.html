@@ -355,6 +355,13 @@ function exportar(){
   var msg=_el("export-instr");
   if(msg) msg.style.display=ok?"none":"block";
 }
+var _CAT_REMOTO=null;
+function _cargarCatalogoRemoto(){
+  fetch("catalogo.json",{cache:"no-store"})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(data){ if(data) _CAT_REMOTO=data; })
+    .catch(function(){});
+}
 var _bTimer=null;
 function buscarProd(){
   clearTimeout(_bTimer);
@@ -363,11 +370,21 @@ function buscarProd(){
     var res=_el("add-sugs");
     if(!res) return;
     if(q.length<2){res.style.display="none";return;}
-    var cat=(_D&&_D.catalogo)||[];
-    var m=cat.filter(function(p){
-      if(!p.cod) return false;
-      return p.cod.toLowerCase().indexOf(q)>-1||(p.nombre||"").toLowerCase().indexOf(q)>-1;
-    }).slice(0,30);
+    var m=[];
+    if(_CAT_REMOTO){
+      for(var cod in _CAT_REMOTO){
+        if(m.length>=30) break;
+        var nombre=_CAT_REMOTO[cod]||"";
+        if(cod.toLowerCase().indexOf(q)>-1||nombre.toLowerCase().indexOf(q)>-1) m.push({cod:cod,nombre:nombre});
+      }
+    }
+    if(!m.length){
+      var cat=(_D&&_D.catalogo)||[];
+      m=cat.filter(function(p){
+        if(!p.cod) return false;
+        return p.cod.toLowerCase().indexOf(q)>-1||(p.nombre||"").toLowerCase().indexOf(q)>-1;
+      }).slice(0,30);
+    }
     if(!m.length){res.style.display="none";return;}
     res.innerHTML="";
     m.forEach(function(p){
@@ -533,6 +550,7 @@ function cpExportar(){
 
 document.addEventListener("DOMContentLoaded",function(){
   _cargarDatos();
+  _cargarCatalogoRemoto();
   if(!_D) return;
   function _on(id,ev,fn){var el=_el(id);if(el)el.addEventListener(ev,fn);}
   _on("btn-start","click",comenzar);
