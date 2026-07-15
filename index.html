@@ -68,6 +68,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .btn-fin-aqui{background:rgba(0,0,0,.12);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer}
 .err-box{background:#1a3a6b;color:white;padding:32px 20px;flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
 .err-box .em{font-size:44px;margin-bottom:14px}
+.cp-list-item{background:white;border-radius:10px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.1);display:flex;justify-content:space-between;align-items:center;cursor:pointer;border:2px solid transparent}
+.cp-list-item.tocado{border-color:#c8e6c9}
 </style>
 </head>
 <body>
@@ -159,20 +161,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 </div>
 
 <div id="screen-conteo" class="screen">
-  <div class="topbar"><div class="topbar-loc" id="cp-topbar-cod">—</div><div class="topbar-prog" id="cp-topbar-prog">0/0</div></div>
+  <div class="topbar"><div class="topbar-loc" id="cp-topbar-title">Conteo de Productos</div><div class="topbar-prog" id="cp-topbar-prog">0/0</div></div>
   <div class="progress-bar"><div class="progress-fill" id="cp-progress-fill" style="width:0%"></div></div>
-  <div class="loc-content" id="cp-content"></div>
-  <div class="nav-bar">
-    <button type="button" class="btn-nav" id="cp-btn-ant" style="display:none">← Anterior</button>
-    <button type="button" class="btn-nav primary" id="cp-btn-sig">Siguiente →</button>
+  <div class="loc-content" id="cp-content">
+    <div id="cp-list-view"></div>
+    <div id="cp-detail-view" style="display:none"></div>
+  </div>
+  <div class="nav-bar" id="cp-list-nav">
+    <button type="button" class="btn-nav success" id="cp-btn-finalizar">✅ Finalizar conteo</button>
+  </div>
+  <div class="nav-bar" id="cp-detail-nav" style="display:none">
+    <button type="button" class="btn-nav primary" id="cp-btn-volver">✓ Listo — volver a la lista</button>
   </div>
 </div>
 
 <div id="screen-summary-cp" class="screen">
   <div class="summary">
     <div class="summary-title">✅ Conteo Guardado</div>
+    <div id="cp-summary-parcial" style="display:none;background:rgba(255,152,0,.25);border:1px solid rgba(255,152,0,.5);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;line-height:1.7;text-align:left;width:100%;max-width:380px">
+      ⚠ <strong>Conteo parcial</strong> — solo se exportan los productos que revisaste.
+    </div>
     <div class="kpi-grid">
-      <div class="kpi"><div class="kpi-v" id="cp-kpi-total">—</div><div class="kpi-l">Productos</div></div>
+      <div class="kpi"><div class="kpi-v" id="cp-kpi-total">—</div><div class="kpi-l" id="cp-kpi-total-lbl">Productos</div></div>
       <div class="kpi"><div class="kpi-v" id="cp-kpi-ok" style="color:#81c784">—</div><div class="kpi-l">✓ Sin diferencias</div></div>
       <div class="kpi"><div class="kpi-v" id="cp-kpi-difs" style="color:#ff8a65">—</div><div class="kpi-l">⚠ Con diferencias</div></div>
       <div class="kpi"><div class="kpi-v" id="cp-kpi-noenc" style="color:#ffb74d">—</div><div class="kpi-l">❓ No encontrados</div></div>
@@ -226,7 +236,7 @@ function _cargarDatos(){
   var opStr = _op ? ('<div>👷 <strong>'+_op+'</strong></div>') : '';
   if(_D._tipo==="conteo_producto_v1"){
     _CPROD = _D.productos||[];
-    _CPROD.forEach(function(p){ _cpR[p.cod] = {hallazgos:[]}; });
+    _CPROD.forEach(function(p){ _cpR[p.cod] = {hallazgos:[], tocado:false}; });
     _el('splash-logo').textContent = '📦';
     _el('splash-title').textContent = 'Conteo de Productos';
     _el('splash-info').innerHTML =
@@ -262,7 +272,7 @@ function comenzar(){
     var n=(_el("inp-operario").value||"").trim().toUpperCase()||"OPERARIO";
     _op=n;
     if(_D._tipo==="conteo_producto_v1"){
-      _cpIdx=0; cpRenderItem(); _showScr("screen-conteo");
+      cpRenderLista(); _showScr("screen-conteo");
     } else {
       _idx=0; renderLoc(); _showScr("screen-audit");
     }
@@ -429,15 +439,50 @@ function showAddForm(){
   if(f.classList.contains("open")) _el("add-buscar").focus();
 }
 
-// ==================== CONTEO DE PRODUCTOS (por SKU) ====================
-function cpRenderItem(){
+// ==================== CONTEO DE PRODUCTOS (por SKU, lista libre) ====================
+function cpRenderLista(){
+  _el('cp-detail-view').style.display='none';
+  _el('cp-list-view').style.display='block';
+  _el('cp-list-nav').style.display='flex';
+  _el('cp-detail-nav').style.display='none';
+  _el('cp-topbar-title').textContent='Conteo de Productos';
+
+  var html=_CPROD.map(function(p,i){
+    var st=_cpR[p.cod];
+    var total=st.hallazgos.reduce(function(s,h){return s+(+h.cantidad||0);},0);
+    var estado=!st.tocado
+      ? '<span style="color:#aaa;font-size:11px">Pendiente</span>'
+      : (total>0
+          ? '<span style="color:#2e7d32;font-weight:700;font-size:11px">✓ '+total+'</span>'
+          : '<span style="color:#e65100;font-weight:700;font-size:11px">❓ No encontrado</span>');
+    return '<div class="cp-list-item'+(st.tocado?' tocado':'')+'" data-idx="'+i+'">'
+      +'<div><div class="prod-cod">'+p.cod+'</div><div class="prod-nom" style="margin-bottom:0">'+(p.nombre||p.cod)+'</div>'
+      +'<div style="font-size:11px;color:#888">Sistema: '+p.cantSistema+'</div></div>'
+      +'<div>'+estado+'</div></div>';
+  }).join('');
+  var wrap=_el('cp-list-view'); wrap.innerHTML=html;
+  Array.prototype.forEach.call(wrap.querySelectorAll('.cp-list-item'),function(el){
+    el.addEventListener('click',function(){ cpAbrirDetalle(+el.dataset.idx); });
+  });
+
+  var contados=_CPROD.filter(function(p){return _cpR[p.cod].tocado;}).length;
+  _el('cp-topbar-prog').textContent=contados+' / '+_CPROD.length;
+  _el('cp-progress-fill').style.width=(_CPROD.length?Math.round(contados/_CPROD.length*100):0)+'%';
+}
+
+function cpAbrirDetalle(idx){
+  _cpIdx=idx;
   var p=_CPROD[_cpIdx];
   var st=_cpR[p.cod];
-  _el('cp-topbar-cod').textContent=p.cod;
-  _el('cp-topbar-prog').textContent=(_cpIdx+1)+" / "+_CPROD.length;
-  var pct=_CPROD.length?Math.round((_cpIdx/_CPROD.length)*100):0;
-  _el('cp-progress-fill').style.width=pct+"%";
-  var cont=_el('cp-content'); cont.innerHTML="";
+  st.tocado=true;
+
+  _el('cp-list-view').style.display='none';
+  _el('cp-list-nav').style.display='none';
+  _el('cp-detail-view').style.display='block';
+  _el('cp-detail-nav').style.display='flex';
+  _el('cp-topbar-title').textContent=p.cod;
+
+  var cont=_el('cp-detail-view'); cont.innerHTML="";
 
   var card=document.createElement("div"); card.className="prod-card";
   var cDiv=document.createElement("div"); cDiv.className="prod-cod"; cDiv.textContent=p.cod;
@@ -468,11 +513,6 @@ function cpRenderItem(){
   totalDiv.style.cssText="text-align:center;font-size:15px;font-weight:800;color:#1a3a6b;margin-top:6px";
   cont.appendChild(totalDiv);
   cpActualizarTotal();
-
-  _el("cp-btn-ant").style.display=_cpIdx===0?"none":"";
-  var isLast=_cpIdx===_CPROD.length-1;
-  _el("cp-btn-sig").textContent=isLast?"✅ Finalizar":"Siguiente →";
-  _el("cp-btn-sig").className="btn-nav "+(isLast?"success":"primary");
 }
 function cpRenderRows(){
   var p=_CPROD[_cpIdx];
@@ -506,31 +546,42 @@ function cpActualizarTotal(){
   var total=st.hallazgos.reduce(function(s,h){return s+(+h.cantidad||0);},0);
   var d=_el("cp-total"); if(d) d.textContent="Total contado: "+total;
 }
-function cpAnterior(){ if(_cpIdx>0){_cpIdx--; cpRenderItem();} }
-function cpSiguiente(){ if(_cpIdx<_CPROD.length-1){_cpIdx++; cpRenderItem();} else { cpMostrarResumen(); } }
+function cpFinalizar(){
+  if(!_CPROD.some(function(p){return _cpR[p.cod].tocado;})){
+    alert("Aún no has revisado ningún producto.");
+    return;
+  }
+  cpMostrarResumen();
+}
 function cpMostrarResumen(){
-  var sinDif=0, conDif=0, noEnc=0;
+  var sinDif=0, conDif=0, noEnc=0, pendientes=0;
   _CPROD.forEach(function(p){
     var st=_cpR[p.cod];
+    if(!st.tocado){ pendientes++; return; }
     var total=st.hallazgos.reduce(function(s,h){return s+(+h.cantidad||0);},0);
     if(!st.hallazgos.length || total===0) noEnc++;
     else if(total===p.cantSistema) sinDif++;
     else conDif++;
   });
-  _el("cp-kpi-total").textContent=_CPROD.length;
+  var contados=_CPROD.length-pendientes;
+  _el("cp-kpi-total").textContent=contados+(pendientes?" / "+_CPROD.length:"");
+  _el("cp-kpi-total-lbl").textContent=pendientes?"Contados (parcial)":"Productos";
   _el("cp-kpi-ok").textContent=sinDif;
   _el("cp-kpi-difs").textContent=conDif;
   _el("cp-kpi-noenc").textContent=noEnc;
+  var alerta=_el("cp-summary-parcial");
+  if(alerta) alerta.style.display=pendientes>0?"block":"none";
   _showScr("screen-summary-cp");
 }
 function cpExportar(){
-  var productos=_CPROD.map(function(p){
+  var tocados=_CPROD.filter(function(p){return _cpR[p.cod].tocado;});
+  var productos=tocados.map(function(p){
     var st=_cpR[p.cod];
     var hallazgos=st.hallazgos.filter(function(h){return h.ubic || h.cantidad;});
     var cantContada=hallazgos.reduce(function(s,h){return s+(+h.cantidad||0);},0);
     return {cod:p.cod,nombre:p.nombre,cantSistema:p.cantSistema,hallazgos:hallazgos,cantContada:cantContada};
   });
-  var res={_tipo:"conteo_producto_v1",_fecha:new Date().toISOString(),operario:_op,productos:productos};
+  var res={_tipo:"conteo_producto_v1",_fecha:new Date().toISOString(),operario:_op,productos:productos,_contados:tocados.length,_totalProductos:_CPROD.length};
   var json=JSON.stringify(res,null,2);
   var ok=false;
   try{
@@ -574,8 +625,8 @@ document.addEventListener("DOMContentLoaded",function(){
       }).catch(function(){ta.select();document.execCommand("copy");});
     } else { ta.select(); document.execCommand("copy"); }
   });
-  _on("cp-btn-ant","click",cpAnterior);
-  _on("cp-btn-sig","click",cpSiguiente);
+  _on("cp-btn-finalizar","click",cpFinalizar);
+  _on("cp-btn-volver","click",cpRenderLista);
   _on("cp-btn-export","click",cpExportar);
   _on("cp-btn-reiniciar","click",function(){location.reload();});
   _on("cp-btn-copy-json","click",function(){
