@@ -178,6 +178,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
     <button type="button" class="btn-nav success" id="cp-btn-finalizar">✅ Finalizar conteo</button>
   </div>
   <div class="nav-bar" id="cp-detail-nav" style="display:none">
+    <button type="button" class="btn-nav" id="cp-btn-quitar" style="border-color:#e57373;color:#c62828">✕ Quitar producto</button>
     <button type="button" class="btn-nav primary" id="cp-btn-volver">✓ Listo — volver a la lista</button>
   </div>
 </div>
@@ -531,11 +532,15 @@ function cpRenderLista(){
     return '<div class="cp-list-item'+(st.tocado?' tocado':'')+'" data-idx="'+i+'">'
       +'<div><div class="prod-cod">'+p.cod+'</div><div class="prod-nom" style="margin-bottom:0">'+(p.nombre||p.cod)+'</div>'
       +'<div style="font-size:11px;color:#888">Sistema: '+p.cantSistema+'</div></div>'
-      +'<div>'+estado+'</div></div>';
+      +'<div style="display:flex;align-items:center;gap:8px">'+estado
+      +'<button type="button" class="btn-remove cp-del-btn" data-idx="'+i+'" title="Quitar producto de este conteo">✕</button></div></div>';
   }).join('');
   var wrap=_el('cp-list-view'); wrap.innerHTML=html;
   Array.prototype.forEach.call(wrap.querySelectorAll('.cp-list-item'),function(el){
     el.addEventListener('click',function(){ cpAbrirDetalle(+el.dataset.idx); });
+  });
+  Array.prototype.forEach.call(wrap.querySelectorAll('.cp-del-btn'),function(btn){
+    btn.addEventListener('click',function(e){ e.stopPropagation(); cpQuitarProductoLista(+btn.dataset.idx); });
   });
 
   var contados=_CPROD.filter(function(p){return _cpR[p.cod].tocado;}).length;
@@ -543,6 +548,15 @@ function cpRenderLista(){
   _el('cp-progress-fill').style.width=(_CPROD.length?Math.round(contados/_CPROD.length*100):0)+'%';
 }
 
+// Quita un producto completo del conteo (por si se eligió por error o ya no hace falta auditarlo).
+function cpQuitarProductoLista(idx){
+  var p=_CPROD[idx];
+  if(!p) return;
+  if(!confirm('¿Quitar "'+p.cod+' — '+(p.nombre||'')+'" de este conteo?')) return;
+  delete _cpR[p.cod];
+  _CPROD.splice(idx,1);
+  cpRenderLista();
+}
 function cpAbrirDetalle(idx){
   _cpIdx=idx;
   var p=_CPROD[_cpIdx];
@@ -782,6 +796,7 @@ document.addEventListener("DOMContentLoaded",function(){
   }
   _on("cp-btn-finalizar","click",cpFinalizar);
   _on("cp-btn-volver","click",cpRenderLista);
+  _on("cp-btn-quitar","click",function(){ cpQuitarProductoLista(_cpIdx); });
   _on("cp-btn-export","click",cpExportar);
   _on("cp-btn-reiniciar","click",function(){location.reload();});
   _on("cp-btn-copy-json","click",function(){
