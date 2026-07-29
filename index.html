@@ -164,6 +164,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
   <div class="topbar"><div class="topbar-loc" id="cp-topbar-title">Conteo de Productos</div><div class="topbar-prog" id="cp-topbar-prog">0/0</div></div>
   <div class="progress-bar"><div class="progress-fill" id="cp-progress-fill" style="width:0%"></div></div>
   <div class="loc-content" id="cp-content">
+    <div style="padding:10px 10px 0 10px" id="cp-buscar-wrap">
+      <div class="add-search-wrap">
+        <input id="cp-buscar" class="add-search" type="text" placeholder="Busca por código SAP o descripción..." autocomplete="off">
+        <div id="cp-sugs" class="add-sugs"></div>
+      </div>
+      <div style="font-size:10px;color:#999;margin-top:4px" id="cp-buscar-hint">Busca y toca un producto para agregarlo y contarlo.</div>
+    </div>
     <div id="cp-list-view"></div>
     <div id="cp-detail-view" style="display:none"></div>
   </div>
@@ -218,7 +225,18 @@ function _showScr(id){
 
 function _cargarDatos(){
   var hash=(location.hash||"").slice(1);
-  if(!hash){ _mostrarError("Falta la información en el link."); return; }
+  if(!hash){
+    _D = {_tipo:"conteo_producto_v1", _generado:new Date().toISOString(), operarioSugerido:"", productos:[]};
+    _CPROD = [];
+    _cpR = {};
+    _el('splash-logo').textContent = '🔍';
+    _el('splash-title').textContent = 'Conteo Libre';
+    _el('splash-info').innerHTML =
+      '<div>🔎 Busca los productos que quieras contar</div>'+
+      '<div>📍 Anota la cantidad y en qué ubicaciones los encontraste</div>';
+    _showScr('screen-splash');
+    return;
+  }
   var json;
   try{
     json = LZString.decompressFromEncodedURIComponent(hash);
@@ -372,6 +390,19 @@ function _cargarCatalogoRemoto(){
     .then(function(data){ if(data) _CAT_REMOTO=data; })
     .catch(function(){});
 }
+// Normaliza una entrada del catálogo remoto: soporta el formato nuevo {n,s,u} (nombre/stock/ubicaciones)
+// y el formato viejo (string = solo nombre), por si catalogo.json aún no se ha vuelto a subir.
+function _catInfo(cod){
+  if(!_CAT_REMOTO) return null;
+  var raw=_CAT_REMOTO[cod];
+  if(raw==null) return null;
+  if(typeof raw==="string") return {nombre:raw, stock:null, ubics:[]};
+  return {
+    nombre: raw.n||"",
+    stock: (typeof raw.s==="number") ? raw.s : null,
+    ubics: (raw.u||[]).map(function(x){ return {ubic:x[0], cantidad:x[1]}; })
+  };
+}
 var _bTimer=null;
 function buscarProd(){
   clearTimeout(_bTimer);
@@ -384,8 +415,9 @@ function buscarProd(){
     if(_CAT_REMOTO){
       for(var cod in _CAT_REMOTO){
         if(m.length>=30) break;
-        var nombre=_CAT_REMOTO[cod]||"";
-        if(cod.toLowerCase().indexOf(q)>-1||nombre.toLowerCase().indexOf(q)>-1) m.push({cod:cod,nombre:nombre});
+        var info=_catInfo(cod);
+        var nombre=info?info.nombre:"";
+        if(cod.toLowerCase().indexOf(q)>-1||nombre.toLowerCase().indexOf(q)>-1) m.push({cod:cod,nombre:nombre,stock:info?info.stock:null});
       }
     }
     if(!m.length){
@@ -399,7 +431,7 @@ function buscarProd(){
     res.innerHTML="";
     m.forEach(function(p){
       var it=document.createElement("div"); it.className="sug-item";
-      var sc=document.createElement("span"); sc.className="sug-cod"; sc.textContent=p.cod;
+      var sc=document.createElement("span"); sc.className="sug-cod"; sc.textContent=p.cod+(p.stock!=null?" · stock "+p.stock:"");
       var sn=document.createElement("span"); sn.className="sug-nom"; sn.textContent=p.nombre||"";
       it.appendChild(sc); it.appendChild(sn);
       it.addEventListener("mousedown",function(e){e.preventDefault();});
@@ -445,7 +477,15 @@ function cpRenderLista(){
   _el('cp-list-view').style.display='block';
   _el('cp-list-nav').style.display='flex';
   _el('cp-detail-nav').style.display='none';
+  var buscWrap=_el('cp-buscar-wrap'); if(buscWrap) buscWrap.style.display='block';
   _el('cp-topbar-title').textContent='Conteo de Productos';
+
+  if(!_CPROD.length){
+    _el('cp-list-view').innerHTML='<div class="empty-loc">🔍 Sin productos todavía.<br><small>Usa el buscador de arriba para agregar el primero.</small></div>';
+    _el('cp-topbar-prog').textContent='0 / 0';
+    _el('cp-progress-fill').style.width='0%';
+    return;
+  }
 
   var html=_CPROD.map(function(p,i){
     var st=_cpR[p.cod];
@@ -478,6 +518,7 @@ function cpAbrirDetalle(idx){
 
   _el('cp-list-view').style.display='none';
   _el('cp-list-nav').style.display='none';
+  var buscWrap2=_el('cp-buscar-wrap'); if(buscWrap2) buscWrap2.style.display='none';
   _el('cp-detail-view').style.display='block';
   _el('cp-detail-nav').style.display='flex';
   _el('cp-topbar-title').textContent=p.cod;
@@ -540,6 +581,64 @@ function cpRenderRows(){
     row.appendChild(rmB);
     wrap.appendChild(row);
   });
+}
+var _cpBTimer=null;
+function cpBuscarProd(){
+  clearTimeout(_cpBTimer);
+  _cpBTimer=setTimeout(function(){
+    var q=(_el("cp-buscar").value||"").trim().toLowerCase();
+    var res=_el("cp-sugs");
+    if(!res) return;
+    if(q.length<2){res.style.display="none";return;}
+    if(!_CAT_REMOTO){
+      var hint=_el("cp-buscar-hint");
+      if(hint) hint.textContent="No se pudo cargar el catálogo completo — verifica tu conexión e intenta de nuevo.";
+      res.style.display="none";
+      return;
+    }
+    var m=[];
+    for(var cod in _CAT_REMOTO){
+      if(m.length>=30) break;
+      var info=_catInfo(cod);
+      var nombre=info?info.nombre:"";
+      if(cod.toLowerCase().indexOf(q)>-1||nombre.toLowerCase().indexOf(q)>-1) m.push({cod:cod,info:info});
+    }
+    if(!m.length){res.innerHTML='<div style="padding:10px 12px;font-size:12px;color:#999">Sin resultados</div>';res.style.display="block";return;}
+    res.innerHTML="";
+    m.forEach(function(p){
+      var yaAgregado=_CPROD.some(function(x){return x.cod===p.cod;});
+      var it=document.createElement("div"); it.className="sug-item";
+      var sc=document.createElement("span"); sc.className="sug-cod";
+      sc.textContent=p.cod+(p.info&&p.info.stock!=null?" · stock "+p.info.stock:"")+(yaAgregado?" ✓ ya agregado":"");
+      var sn=document.createElement("span"); sn.className="sug-nom"; sn.textContent=(p.info&&p.info.nombre)||"";
+      it.appendChild(sc); it.appendChild(sn);
+      it.addEventListener("mousedown",function(e){e.preventDefault();});
+      it.addEventListener("click",function(){
+        cpAgregarDesdeBusqueda(p.cod,p.info);
+        _el("cp-buscar").value="";
+        res.style.display="none";
+      });
+      res.appendChild(it);
+    });
+    res.style.display="block";
+  },250);
+}
+// Agrega (o abre, si ya estaba) un producto encontrado por el buscador libre y va directo
+// a la pantalla de detalle para anotar cantidad y ubicaciones — así de simple: buscar → tocar → contar.
+function cpAgregarDesdeBusqueda(cod, info){
+  var idx=-1;
+  _CPROD.forEach(function(x,i){ if(x.cod===cod) idx=i; });
+  if(idx<0){
+    _CPROD.push({
+      cod:cod,
+      nombre:(info&&info.nombre)||cod,
+      cantSistema:(info&&info.stock!=null)?info.stock:0,
+      ubicsSistema:(info&&info.ubics)||[]
+    });
+    _cpR[cod]={hallazgos:[],tocado:false};
+    idx=_CPROD.length-1;
+  }
+  cpAbrirDetalle(idx);
 }
 function cpActualizarTotal(){
   var p=_CPROD[_cpIdx]; var st=_cpR[p.cod];
@@ -625,6 +724,11 @@ document.addEventListener("DOMContentLoaded",function(){
       }).catch(function(){ta.select();document.execCommand("copy");});
     } else { ta.select(); document.execCommand("copy"); }
   });
+  var cpBuscEl=_el("cp-buscar");
+  if(cpBuscEl){
+    cpBuscEl.addEventListener("input",cpBuscarProd);
+    cpBuscEl.addEventListener("blur",function(){setTimeout(function(){var s=_el("cp-sugs");if(s)s.style.display="none";},300);});
+  }
   _on("cp-btn-finalizar","click",cpFinalizar);
   _on("cp-btn-volver","click",cpRenderLista);
   _on("cp-btn-export","click",cpExportar);
