@@ -390,6 +390,39 @@ function _cargarCatalogoRemoto(){
     .then(function(data){ if(data) _CAT_REMOTO=data; })
     .catch(function(){});
 }
+var _UBICS_VALIDAS=[];
+function _cargarUbicacionesRemoto(){
+  fetch("ubicaciones.json",{cache:"no-store"})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(data){ if(Array.isArray(data)) _UBICS_VALIDAS=data; })
+    .catch(function(){});
+}
+// Colorea el input según si el texto actual coincide EXACTO con una ubicación real conocida.
+// Si aún no cargó ubicaciones.json (o está vacío), no se marca nada — no bloquea al operario.
+function _ubicValidarBorde(inpEl, val){
+  if(!_UBICS_VALIDAS.length || !val){ inpEl.style.borderColor="#c5cae9"; return; }
+  inpEl.style.borderColor = (_UBICS_VALIDAS.indexOf(String(val).toUpperCase())>-1) ? "#66bb6a" : "#e57373";
+}
+var _ubicTimer=null;
+// Sugiere ubicaciones reales que contienen lo tecleado (ej. "01-06" encuentra "A-01-06-01", "A-01-06-02", ...).
+function _ubicSugerir(q, sugsEl, onPick){
+  clearTimeout(_ubicTimer);
+  _ubicTimer=setTimeout(function(){
+    var query=(q||"").trim().toUpperCase();
+    if(query.length<2 || !_UBICS_VALIDAS.length){ sugsEl.style.display="none"; return; }
+    var m=_UBICS_VALIDAS.filter(function(u){ return u.indexOf(query)>-1; }).slice(0,20);
+    if(!m.length){ sugsEl.innerHTML='<div style="padding:10px 12px;font-size:12px;color:#999">Sin coincidencias reales — revisa el código</div>'; sugsEl.style.display="block"; return; }
+    sugsEl.innerHTML="";
+    m.forEach(function(code){
+      var it=document.createElement("div"); it.className="sug-item";
+      it.innerHTML='<span class="sug-cod" style="font-family:monospace;font-size:13px;color:#1a3a6b">'+code+'</span>';
+      it.addEventListener("mousedown",function(e){e.preventDefault();});
+      it.addEventListener("click",function(){ onPick(code); });
+      sugsEl.appendChild(it);
+    });
+    sugsEl.style.display="block";
+  },200);
+}
 // Normaliza una entrada del catálogo remoto: soporta el formato nuevo {n,s,u} (nombre/stock/ubicaciones)
 // y el formato viejo (string = solo nombre), por si catalogo.json aún no se ha vuelto a subir.
 function _catInfo(cod){
@@ -568,11 +601,28 @@ function cpRenderRows(){
   }
   st.hallazgos.forEach(function(h,i){
     var row=document.createElement("div"); row.className="prod-row"; row.style.marginBottom="8px";
-    var ubicInp=document.createElement("input"); ubicInp.type="text"; ubicInp.placeholder="Ubicación (ej A-01-02-03)";
+
+    var ubicWrap=document.createElement("div"); ubicWrap.className="add-search-wrap"; ubicWrap.style.cssText="flex:2;min-width:130px;margin-bottom:0";
+    var ubicInp=document.createElement("input"); ubicInp.type="text"; ubicInp.placeholder="Ubicación (ej A-01-02-03)"; ubicInp.autocomplete="off";
     ubicInp.value=h.ubic;
-    ubicInp.style.cssText="flex:2;min-width:130px;padding:8px;border:2px solid #c5cae9;border-radius:8px;font-size:13px";
-    ubicInp.addEventListener("input",function(){ h.ubic=this.value; });
-    row.appendChild(ubicInp);
+    ubicInp.style.cssText="width:100%;padding:8px;border:2px solid #c5cae9;border-radius:8px;font-size:13px;box-sizing:border-box";
+    var ubicSugs=document.createElement("div"); ubicSugs.className="add-sugs";
+    (function(hh,inpEl,sugsEl){
+      _ubicValidarBorde(inpEl, hh.ubic);
+      inpEl.addEventListener("input",function(){
+        hh.ubic=this.value;
+        _ubicValidarBorde(inpEl, hh.ubic);
+        _ubicSugerir(this.value, sugsEl, function(code){
+          inpEl.value=code; hh.ubic=code;
+          _ubicValidarBorde(inpEl, code);
+          sugsEl.style.display="none";
+        });
+      });
+      inpEl.addEventListener("blur",function(){ setTimeout(function(){ sugsEl.style.display="none"; },250); });
+    })(h, ubicInp, ubicSugs);
+    ubicWrap.appendChild(ubicInp); ubicWrap.appendChild(ubicSugs);
+    row.appendChild(ubicWrap);
+
     var qtyInp=document.createElement("input"); qtyInp.type="number"; qtyInp.min="0"; qtyInp.className="qty-inp"; qtyInp.value=h.cantidad;
     qtyInp.addEventListener("input",function(){ h.cantidad=+this.value||0; cpActualizarTotal(); });
     row.appendChild(qtyInp);
@@ -701,6 +751,7 @@ function cpExportar(){
 document.addEventListener("DOMContentLoaded",function(){
   _cargarDatos();
   _cargarCatalogoRemoto();
+  _cargarUbicacionesRemoto();
   if(!_D) return;
   function _on(id,ev,fn){var el=_el(id);if(el)el.addEventListener(ev,fn);}
   _on("btn-start","click",comenzar);
