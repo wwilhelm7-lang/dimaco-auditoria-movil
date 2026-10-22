@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>2da Selección — DIMACO</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f2f5;color:#1a1a2e;-webkit-tap-highlight-color:transparent}
+#wa-banner{display:none;background:#b71c1c;color:white;padding:12px 16px;font-size:13px;align-items:center;gap:10px;position:sticky;top:0;z-index:9999}
+#wa-banner button{background:transparent;color:rgba(255,255,255,.8);border:none;font-size:18px;margin-left:auto}
+.screen{display:none;min-height:100vh;flex-direction:column}
+.splash{background:#5d2a0c;color:white;padding:32px 20px;flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+.splash-logo{font-size:52px;margin-bottom:12px}
+.splash-title{font-size:22px;font-weight:900;margin-bottom:4px}
+.splash-sub{font-size:13px;opacity:.75;margin-bottom:22px}
+.splash-info{background:rgba(255,255,255,.13);border-radius:10px;padding:14px 16px;margin-bottom:24px;width:100%;max-width:360px;font-size:13px;line-height:1.9;text-align:left}
+.inp-name{width:100%;max-width:360px;padding:14px;font-size:16px;border:none;border-radius:10px;text-align:center;font-weight:700;text-transform:uppercase;margin-bottom:14px}
+.btn-start{background:#ef6c00;color:white;border:none;border-radius:12px;padding:17px 32px;font-size:17px;font-weight:800;width:100%;max-width:360px}
+.btn-sec{background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.3);border-radius:12px;padding:13px;font-size:14px;font-weight:700;width:100%;max-width:360px;margin-top:10px}
+.topbar{background:#5d2a0c;color:white;padding:12px 14px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:100}
+.topbar-t{font-size:16px;font-weight:900;flex:1}
+.topbar-p{font-size:12px;opacity:.85;white-space:nowrap}
+.content{flex:1;padding:10px;padding-bottom:90px}
+.search-wrap{position:relative;margin-bottom:10px}
+.search{width:100%;padding:13px 12px;border:2px solid #ffcc80;border-radius:10px;font-size:16px;background:white}
+.search:focus{outline:none;border-color:#ef6c00}
+.sugs{display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #ffcc80;border-radius:0 0 10px 10px;max-height:60vh;overflow-y:auto;z-index:200;box-shadow:0 6px 16px rgba(0,0,0,.18)}
+.sug{padding:11px 12px;border-bottom:1px solid #f3f3f3;display:flex;flex-direction:column;gap:2px}
+.sug:active{background:#fff3e0}
+.sug-cod{font-size:11px;color:#bf360c;font-weight:800;font-family:monospace}
+.sug-cod .x{background:#6a1b9a;color:white;border-radius:4px;padding:1px 5px;font-family:sans-serif;font-size:9px;margin-left:6px}
+.sug-nom{font-size:13px}
+.sug-libre{background:#fffde7;color:#5d4037;font-size:13px;font-weight:700}
+.hint{font-size:11px;color:#8d6e63;margin:-4px 2px 10px}
+.empty{background:white;border-radius:10px;padding:26px 18px;text-align:center;color:#999;font-size:13px;line-height:1.8}
+.item{background:white;border-radius:11px;padding:10px;margin-bottom:9px;box-shadow:0 1px 4px rgba(0,0,0,.1);display:flex;gap:10px;align-items:center;border-left:5px solid #ef6c00}
+.item.VENCIDO{border-left-color:#c62828}.item.ROTO{border-left-color:#6d4c41}.item.MALO{border-left-color:#f9a825}.item.OTRO{border-left-color:#78909c}
+.thumb{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#eee;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;color:#bbb}
+.item-tx{flex:1;min-width:0}
+.item-cod{font-size:10px;color:#888;font-weight:800;font-family:monospace}
+.item-nom{font-size:13px;font-weight:700;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.item-meta{font-size:11px;color:#666;margin-top:3px}
+.item-cant{font-size:22px;font-weight:900;color:#5d2a0c;min-width:44px;text-align:right}
+.chip{display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;color:white;margin-right:4px}
+.chip.VENCIDO{background:#c62828}.chip.ROTO{background:#6d4c41}.chip.MALO{background:#f9a825;color:#3e2723}.chip.OTRO{background:#78909c}
+.warn{color:#c62828;font-weight:800}
+.navbar{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px;background:white;border-top:1px solid #e0e0e0;z-index:90}
+.btn{flex:1;padding:15px;border:1px solid #ffcc80;border-radius:10px;font-size:15px;font-weight:800;background:white;color:#5d2a0c}
+.btn.pri{background:#5d2a0c;color:white;border-color:#5d2a0c}
+.btn.ok{background:#2e7d32;color:white;border-color:#2e7d32}
+.btn.del{color:#c62828;border-color:#ef9a9a}
+/* detalle */
+.card{background:white;border-radius:11px;padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.lbl{font-size:11px;font-weight:800;color:#8d6e63;text-transform:uppercase;margin-bottom:6px}
+.qty-row{display:flex;align-items:center;gap:10px;justify-content:center}
+.qty-b{width:56px;height:56px;border-radius:12px;border:2px solid #ffcc80;background:#fff8f0;font-size:26px;font-weight:900;color:#5d2a0c}
+.qty-i{width:110px;height:56px;border:2px solid #ffcc80;border-radius:12px;font-size:28px;font-weight:900;text-align:center;color:#5d2a0c}
+.est-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.est{padding:13px 8px;border:2px solid #e0e0e0;border-radius:10px;background:white;font-size:14px;font-weight:800;color:#555}
+.est.on{color:white}
+.est.on.VENCIDO{background:#c62828;border-color:#c62828}.est.on.ROTO{background:#6d4c41;border-color:#6d4c41}
+.est.on.MALO{background:#f9a825;border-color:#f9a825;color:#3e2723}.est.on.OTRO{background:#78909c;border-color:#78909c}
+.inp{width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:10px;font-size:15px;font-family:inherit;background:white}
+.inp:focus{outline:none;border-color:#ef6c00}
+.fotos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.foto{position:relative;aspect-ratio:1;border-radius:9px;overflow:hidden;background:#eee}
+.foto img{width:100%;height:100%;object-fit:cover}
+.foto button{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);color:white;border:none;border-radius:50%;width:28px;height:28px;font-size:14px}
+.foto-add{aspect-ratio:1;border:2px dashed #ffcc80;border-radius:9px;background:#fff8f0;color:#bf360c;font-size:12px;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;position:relative;overflow:hidden}
+.foto-add input{position:absolute;inset:0;opacity:0}
+.foto-add span{font-size:26px}
+/* resumen */
+.summary{background:#5d2a0c;color:white;padding:24px 18px;flex:1;display:flex;flex-direction:column;align-items:center}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 22px;width:100%;max-width:380px}
+.kpi{background:rgba(255,255,255,.13);border-radius:10px;padding:13px;text-align:center}
+.kpi-v{font-size:28px;font-weight:900}
+.kpi-l{font-size:11px;opacity:.8;margin-top:3px}
+.btn-big{background:#25d366;color:white;border:none;border-radius:12px;padding:18px;font-size:17px;font-weight:800;width:100%;max-width:380px;margin-bottom:10px}
+.nota{font-size:12px;opacity:.85;line-height:1.6;max-width:380px;text-align:left;background:rgba(0,0,0,.2);border-radius:10px;padding:10px 12px;margin-top:12px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:500;color:white;font-weight:800;font-size:15px}
+</style>
+</head>
+<body>
+
+<div id="wa-banner">
+  <div style="flex:1;line-height:1.6"><strong>⚠ Abre este link en Chrome o Safari</strong><br>
+  <span style="font-size:11px">Dentro de WhatsApp la cámara y el envío del archivo pueden fallar. Toca ⋮ (Android) o ⬆ (iPhone) → Abrir en el navegador.</span></div>
+  <button onclick="this.parentElement.style.display='none'">✕</button>
+</div>
+
+<div id="scr-splash" class="screen">
+  <div class="splash">
+    <div class="splash-logo">♻️</div>
+    <div class="splash-title">Productos de 2da Selección</div>
+    <div class="splash-sub">DIMACO — CD KM9 · Venta bodega</div>
+    <div class="splash-info">
+      🔎 Busca el producto escribiendo partes del nombre<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;(ej: <em>puerta asturiana 90</em>)<br>
+      🔢 Anota cuántas unidades hay<br>
+      🏷️ Marca si está roto, vencido o malo<br>
+      📷 Sácale foto y escribe el detalle<br>
+      📤 Al terminar, envía el archivo por WhatsApp
+    </div>
+    <input id="inp-op" class="inp-name" type="text" placeholder="Tu nombre" autocomplete="off">
+    <button id="btn-start" class="btn-start" type="button">▶ COMENZAR</button>
+    <div id="splash-cont" style="display:none;width:100%;max-width:360px">
+      <div style="font-size:12px;opacity:.85;margin-top:14px">Tienes un registro sin terminar en este teléfono.</div>
+    </div>
+  </div>
+</div>
+
+<div id="scr-lista" class="screen">
+  <div class="topbar"><div class="topbar-t">♻️ 2da Selección</div><div class="topbar-p" id="lista-prog">0 productos</div></div>
+  <div class="content">
+    <div class="search-wrap">
+      <input id="buscar" class="search" type="search" placeholder="Busca: puerta terciado, yeso 25..." autocomplete="off" autocorrect="off" spellcheck="false">
+      <div id="sugs" class="sugs"></div>
+    </div>
+    <div class="hint" id="hint">Escribe dos o más palabras del nombre, en cualquier orden.</div>
+    <div id="lista"></div>
+  </div>
+  <div class="navbar"><button type="button" class="btn ok" id="btn-fin">✅ Terminar y enviar</button></div>
+</div>
+
+<div id="scr-det" class="screen">
+  <div class="topbar"><div class="topbar-t" id="det-tit">Detalle</div></div>
+  <div class="content" id="det"></div>
+  <div class="navbar">
+    <button type="button" class="btn del" id="btn-del">🗑 Quitar</button>
+    <button type="button" class="btn pri" id="btn-listo">✓ Listo</button>
+  </div>
+</div>
+
+<div id="scr-fin" class="screen">
+  <div class="summary">
+    <div class="splash-title">📤 Enviar registro</div>
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-v" id="k-items">—</div><div class="kpi-l">Productos</div></div>
+      <div class="kpi"><div class="kpi-v" id="k-unid">—</div><div class="kpi-l">Unidades</div></div>
+      <div class="kpi"><div class="kpi-v" id="k-fotos">—</div><div class="kpi-l">Fotos</div></div>
+      <div class="kpi"><div class="kpi-v" id="k-inc" style="color:#ffab91">—</div><div class="kpi-l">Sin cantidad o sin estado</div></div>
+    </div>
+    <button type="button" class="btn-big" id="btn-enviar">📤 Enviar archivo (WhatsApp)</button>
+    <button type="button" class="btn-sec" id="btn-bajar">⬇ Solo descargar el archivo</button>
+    <button type="button" class="btn-sec" id="btn-volver">← Volver a la lista</button>
+    <button type="button" class="btn-sec" id="btn-nuevo" style="margin-top:22px;border-color:#ef9a9a;color:#ffcdd2">🧹 Empezar un registro nuevo</button>
+    <div class="nota" id="nota-envio">El archivo lleva las fotos adentro. Mándaselo a quien te pasó el link; él lo importa en la app.<br>
+      Tu registro <strong>queda guardado en este teléfono</strong> hasta que toques “Empezar un registro nuevo”.</div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">Procesando…</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   2DA SELECCIÓN — registro de productos malos / vencidos / rotos
+   ────────────────────────────────────────────────────────────────────
+   Página hermana de index.html: usa el mismo catalogo.json del repo
+   (cod -> nombre). No muestra stock a propósito, igual que el conteo:
+   la comparación con la bodega 61 la hace la app al importar.
+
+   Dónde se guarda lo anotado, para no perderlo si se cierra el navegador:
+     · texto  -> localStorage  (pesa poco)
+     · fotos  -> IndexedDB     (localStorage no aguanta imágenes: ~5 MB)
+
+   El envío es un .json con las fotos dentro (base64, ya comprimidas a
+   ~1100 px). Pesa algunos MB, que WhatsApp manda sin problema como
+   documento. Por eso no hay "copiar texto": con fotos no cabe.
+   ════════════════════════════════════════════════════════════════════ */
+var LS_KEY="dimaco_ss2_estado";
+var ESTADOS=[["ROTO","💥 Roto"],["VENCIDO","⏰ Vencido"],["MALO","⚠ Malo / dañado"],["OTRO","❓ Otro"]];
+var MAX_FOTOS=4, FOTO_LADO=1100, FOTO_CALIDAD=0.6;
+
+var S={op:"", items:[], creado:null};
+var CAT=null, CAT_IDX=[];
+var detId=null;
+
+function $(id){return document.getElementById(id);}
+function show(id){["scr-splash","scr-lista","scr-det","scr-fin"].forEach(function(s){$(s).style.display="none";});$(id).style.display="flex";window.scrollTo(0,0);}
+function guardar(){try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){}}
+function cargar(){try{var r=localStorage.getItem(LS_KEY);if(r){var o=JSON.parse(r);if(o&&Array.isArray(o.items))S=o;}}catch(e){}}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function norm(s){return String(s||"").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"");}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+/* ── IndexedDB para fotos ── */
+var _db=null;
+function idb(){
+  if(_db) return Promise.resolve(_db);
+  return new Promise(function(ok,ko){
+    var r=indexedDB.open("dimaco_ss2",1);
+    r.onupgradeneeded=function(){r.result.createObjectStore("fotos");};
+    r.onsuccess=function(){_db=r.result;ok(_db);};
+    r.onerror=function(){ko(r.error);};
+  });
+}
+function fotoPut(id,data){return idb().then(function(db){return new Promise(function(ok,ko){var t=db.transaction("fotos","readwrite");t.objectStore("fotos").put(data,id);t.oncomplete=function(){ok();};t.onerror=function(){ko(t.error);};});});}
+function fotoGet(id){return idb().then(function(db){return new Promise(function(ok){var q=db.transaction("fotos").objectStore("fotos").get(id);q.onsuccess=function(){ok(q.result||null);};q.onerror=function(){ok(null);};});});}
+function fotoDel(id){return idb().then(function(db){return new Promise(function(ok){var t=db.transaction("fotos","readwrite");t.objectStore("fotos").delete(id);t.oncomplete=function(){ok();};t.onerror=function(){ok();};});}).catch(function(){});}
+function fotosClear(){return idb().then(function(db){return new Promise(function(ok){var t=db.transaction("fotos","readwrite");t.objectStore("fotos").clear();t.oncomplete=function(){ok();};t.onerror=function(){ok();};});}).catch(function(){});}
+
+// Reduce la foto de la cámara (3-5 MB) a un JPEG de ~100 KB.
+function comprimir(file){
+  return new Promise(function(ok,ko){
+    var url=URL.createObjectURL(file); var img=new Image();
+    img.onload=function(){
+      var w=img.naturalWidth,h=img.naturalHeight,k=Math.min(1,FOTO_LADO/Math.max(w,h));
+      var c=document.createElement("canvas"); c.width=Math.round(w*k); c.height=Math.round(h*k);
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(url);
+      ok(c.toDataURL("image/jpeg",FOTO_CALIDAD));
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);ko(new Error("No se pudo leer la imagen"));};
+    img.src=url;
+  });
+}
+
+/* ── Catálogo ── */
+function cargarCatalogo(){
+  fetch("catalogo.json",{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(d){
+    if(!d) throw 0;
+    CAT=d; CAT_IDX=[];
+    for(var cod in d){
+      var v=d[cod]; var n=typeof v==="string"?v:(v&&v.n)||"";
+      if(!n || /^\s*\[NO USAR\]/i.test(n)) continue;
+      CAT_IDX.push({cod:cod,nombre:n,k:norm(cod+" "+n)});
+    }
+    $("hint").textContent="Escribe dos o más palabras del nombre, en cualquier orden. ("+CAT_IDX.length.toLocaleString("es-CL")+" productos)";
+  }).catch(function(){
+    $("hint").innerHTML='<span class="warn">No se pudo cargar el catálogo. Revisa la señal y recarga la página.</span> Igual puedes anotar productos escribiendo el nombre a mano.';
+  });
+}
+
+// Los códigos de 2da son los X… y unos pocos M… que terminan en "DE 2DA".
+function es2da(it){ return it.cod.charAt(0)==="X" || /\sDE\s+2\s*DA\.?$/.test(norm(it.nombre)); }
+
+// Busca por palabras sueltas: "puerta terciado" encuentra "PUERTA ... TERCIADO ...".
+var _bt=null;
+function buscar(){
+  clearTimeout(_bt);
+  _bt=setTimeout(function(){
+    var raw=$("buscar").value.trim(), box=$("sugs");
+    if(raw.length<2){box.style.display="none";return;}
+    var toks=norm(raw).split(/\s+/).filter(Boolean);
+    var m=[];
+    for(var i=0;i<CAT_IDX.length && m.length<200;i++){
+      var it=CAT_IDX[i], ok=true;
+      for(var j=0;j<toks.length;j++){ if(it.k.indexOf(toks[j])<0){ok=false;break;} }
+      if(ok) m.push(it);
+    }
+    // Primero los que empiezan con la primera palabra; los de 2da (X…) después del original.
+    m.sort(function(a,b){
+      var pa=norm(a.nombre).indexOf(toks[0])===0?0:1, pb=norm(b.nombre).indexOf(toks[0])===0?0:1;
+      if(pa!==pb) return pa-pb;
+      var xa=es2da(a)?1:0, xb=es2da(b)?1:0;
+      if(xa!==xb) return xa-xb;
+      return a.nombre.length-b.nombre.length;
+    });
+    m=m.slice(0,40);
+    var h=m.map(function(it,i){
+      return '<div class="sug" data-i="'+i+'"><span class="sug-cod">'+esc(it.cod)+(es2da(it)?'<span class="x">CÓDIGO 2DA</span>':'')+'</span><span class="sug-nom">'+esc(it.nombre)+'</span></div>';
+    }).join("");
+    h+='<div class="sug sug-libre" data-libre="1">➕ No lo encuentro — anotar como “'+esc(raw.toUpperCase())+'”</div>';
+    box.innerHTML=h; box.style.display="block";
+    Array.prototype.forEach.call(box.querySelectorAll(".sug"),function(el){
+      el.addEventListener("mousedown",function(e){e.preventDefault();});
+      el.addEventListener("click",function(){
+        if(el.dataset.libre) agregar("",raw.toUpperCase());
+        else { var it=m[+el.dataset.i]; agregar(it.cod,it.nombre); }
+        $("buscar").value=""; box.style.display="none";
+      });
+    });
+  },180);
+}
+
+/* ── Lista ── */
+function agregar(cod,nombre){
+  var it={id:uid(),cod:cod,nombre:nombre,cant:"",estado:"",venc:"",detalle:"",fotos:[],ts:new Date().toISOString()};
+  S.items.unshift(it); guardar(); abrir(it.id);
+}
+function falta(it){
+  var f=[];
+  if(!(+it.cant>0)) f.push("cantidad");
+  if(!it.estado) f.push("estado");
+  if(it.estado==="VENCIDO" && !it.venc) f.push("fecha venc.");
+  return f;
+}
+function fmtFecha(iso){ if(!iso) return ""; var p=iso.split("-"); return p.length===3?p[2]+"-"+p[1]+"-"+p[0]:iso; }
+function renderLista(){
+  var n=S.items.length, un=S.items.reduce(function(s,i){return s+(+i.cant||0);},0);
+  $("lista-prog").textContent=n+" prod · "+un+" un";
+  var L=$("lista");
+  if(!n){L.innerHTML='<div class="empty">Todavía no anotas nada.<br>Busca arriba el primer producto.</div>';return;}
+  L.innerHTML=S.items.map(function(it){
+    var f=falta(it);
+    var est=it.estado?'<span class="chip '+it.estado+'">'+it.estado+'</span>':'';
+    var meta=est+(it.estado==="VENCIDO"&&it.venc?"vence "+fmtFecha(it.venc)+" · ":"")+(it.fotos.length?"📷 "+it.fotos.length:"")+(f.length?' <span class="warn">· falta '+f.join(", ")+'</span>':"");
+    return '<div class="item '+(it.estado||"")+'" data-id="'+it.id+'">'
+      +'<div class="thumb" data-foto="'+(it.fotos[0]||"")+'">📦</div>'
+      +'<div class="item-tx"><div class="item-cod">'+(it.cod?esc(it.cod):"SIN CÓDIGO")+'</div><div class="item-nom">'+esc(it.nombre)+'</div><div class="item-meta">'+meta+'</div></div>'
+      +'<div class="item-cant">'+(it.cant===""?"—":esc(it.cant))+'</div></div>';
+  }).join("");
+  Array.prototype.forEach.call(L.querySelectorAll(".item"),function(el){el.addEventListener("click",function(){abrir(el.dataset.id);});});
+  Array.prototype.forEach.call(L.querySelectorAll(".thumb[data-foto]"),function(el){
+    var id=el.dataset.foto; if(!id) return;
+    fotoGet(id).then(function(d){ if(d){ el.outerHTML='<img class="thumb" src="'+d+'">'; } });
+  });
+}
+
+/* ── Detalle ── */
+function itemDe(id){for(var i=0;i<S.items.length;i++) if(S.items[i].id===id) return S.items[i]; return null;}
+function abrir(id){
+  detId=id; var it=itemDe(id); if(!it) return;
+  $("det-tit").textContent=it.cod||"Sin código";
+  var D=$("det");
+  D.innerHTML=
+    '<div class="card"><div class="item-cod">'+(it.cod?esc(it.cod):"SIN CÓDIGO — escrito a mano")+'</div><div style="font-size:15px;font-weight:800;line-height:1.35;margin-top:3px">'+esc(it.nombre)+'</div></div>'
+   +'<div class="card"><div class="lbl">Cantidad</div><div class="qty-row">'
+     +'<button type="button" class="qty-b" id="q-menos">−</button>'
+     +'<input id="q" class="qty-i" type="number" inputmode="decimal" min="0" value="'+esc(it.cant)+'">'
+     +'<button type="button" class="qty-b" id="q-mas">+</button></div></div>'
+   +'<div class="card"><div class="lbl">Estado</div><div class="est-grid">'
+     +ESTADOS.map(function(e){return '<button type="button" class="est '+e[0]+(it.estado===e[0]?" on":"")+'" data-e="'+e[0]+'">'+e[1]+'</button>';}).join("")
+     +'</div><div id="venc-wrap" style="margin-top:12px;display:'+(it.estado==="VENCIDO"?"block":"none")+'"><div class="lbl">Fecha de vencimiento</div><input id="venc" class="inp" type="date" value="'+esc(it.venc)+'"></div></div>'
+   +'<div class="card"><div class="lbl">Detalle (opcional)</div><textarea id="detalle" class="inp" rows="3" placeholder="Ej: esquina quebrada, envase hinchado, lote…">'+esc(it.detalle)+'</textarea></div>'
+   +'<div class="card"><div class="lbl">Fotos ('+it.fotos.length+'/'+MAX_FOTOS+')</div><div class="fotos" id="fotos"></div></div>';
+  var q=$("q");
+  q.addEventListener("input",function(){it.cant=q.value===""?"":Math.max(0,+q.value||0);guardar();});
+  $("q-mas").addEventListener("click",function(){it.cant=(+it.cant||0)+1;q.value=it.cant;guardar();});
+  $("q-menos").addEventListener("click",function(){it.cant=Math.max(0,(+it.cant||0)-1);q.value=it.cant;guardar();});
+  Array.prototype.forEach.call(D.querySelectorAll(".est"),function(b){
+    b.addEventListener("click",function(){
+      it.estado=b.dataset.e; guardar();
+      Array.prototype.forEach.call(D.querySelectorAll(".est"),function(x){x.classList.toggle("on",x===b);});
+      $("venc-wrap").style.display=it.estado==="VENCIDO"?"block":"none";
+    });
+  });
+  $("venc").addEventListener("change",function(){it.venc=this.value;guardar();});
+  $("detalle").addEventListener("input",function(){it.detalle=this.value;guardar();});
+  renderFotos(it);
+  show("scr-det");
+  if(it.cant==="") setTimeout(function(){q.focus();},150);
+}
+function renderFotos(it){
+  var F=$("fotos"); F.innerHTML="";
+  it.fotos.forEach(function(fid,i){
+    var d=document.createElement("div"); d.className="foto";
+    var img=document.createElement("img"); d.appendChild(img);
+    fotoGet(fid).then(function(x){if(x) img.src=x;});
+    var b=document.createElement("button"); b.type="button"; b.textContent="✕";
+    b.addEventListener("click",function(){ if(!confirm("¿Borrar esta foto?")) return; it.fotos.splice(i,1); fotoDel(fid); guardar(); renderFotos(it); });
+    d.appendChild(b); F.appendChild(d);
+  });
+  if(it.fotos.length<MAX_FOTOS){
+    F.appendChild(botonFoto(it,true,"📷","Cámara"));
+    F.appendChild(botonFoto(it,false,"🖼️","Galería"));
+  }
+}
+function botonFoto(it,camara,ic,tx){
+  var l=document.createElement("label"); l.className="foto-add";
+  l.innerHTML="<span>"+ic+"</span>"+tx;
+  var inp=document.createElement("input"); inp.type="file"; inp.accept="image/*";
+  if(camara) inp.setAttribute("capture","environment"); else inp.multiple=true;
+  inp.addEventListener("change",function(){
+    var files=Array.prototype.slice.call(inp.files||[],0,MAX_FOTOS-it.fotos.length);
+    if(!files.length) return;
+    $("overlay").style.display="flex";
+    files.reduce(function(p,f){
+      return p.then(function(){return comprimir(f);}).then(function(data){var fid=uid();return fotoPut(fid,data).then(function(){it.fotos.push(fid);});});
+    },Promise.resolve()).catch(function(e){alert("No se pudo guardar la foto: "+e.message);})
+    .then(function(){guardar();$("overlay").style.display="none";renderFotos(it);});
+  });
+  l.appendChild(inp); return l;
+}
+
+/* ── Envío ── */
+function resumen(){
+  $("k-items").textContent=S.items.length;
+  $("k-unid").textContent=S.items.reduce(function(s,i){return s+(+i.cant||0);},0);
+  $("k-fotos").textContent=S.items.reduce(function(s,i){return s+i.fotos.length;},0);
+  $("k-inc").textContent=S.items.filter(function(i){return falta(i).length;}).length;
+  show("scr-fin");
+}
+function armarArchivo(){
+  return Promise.all(S.items.map(function(it){
+    return Promise.all(it.fotos.map(fotoGet)).then(function(fs){
+      return {cod:it.cod,nombre:it.nombre,cant:+it.cant||0,estado:it.estado||"",venc:it.venc||"",detalle:it.detalle||"",ts:it.ts,fotos:fs.filter(Boolean)};
+    });
+  })).then(function(items){
+    var res={_tipo:"segunda_seleccion_v1",_fecha:new Date().toISOString(),operario:S.op,bodega:"61",items:items};
+    var nom="2da_seleccion_"+(S.op||"OPERARIO").replace(/[^A-Z0-9]+/gi,"_")+"_"+new Date().toISOString().slice(0,16).replace(/[-:T]/g,"")+".json";
+    return new File([JSON.stringify(res)],nom,{type:"application/json"});
+  });
+}
+function descargar(f){
+  var u=URL.createObjectURL(f), a=document.createElement("a");
+  a.href=u; a.download=f.name; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(u);},3000);
+}
+function enviar(soloBajar){
+  if(!S.items.length){alert("No hay productos anotados.");return;}
+  var inc=S.items.filter(function(i){return falta(i).length;}).length;
+  if(inc && !confirm(inc+" producto(s) están incompletos (sin cantidad, estado o fecha). ¿Enviar igual?")) return;
+  $("overlay").style.display="flex";
+  armarArchivo().then(function(f){
+    $("overlay").style.display="none";
+    var mb=(f.size/1048576).toFixed(1);
+    if(!soloBajar && navigator.canShare && navigator.canShare({files:[f]})){
+      navigator.share({files:[f],title:"2da selección "+S.op,text:"Registro 2da selección — "+S.op}).catch(function(e){
+        if(e && e.name!=="AbortError"){ descargar(f); alert("No se pudo abrir el menú de compartir. Se descargó el archivo ("+mb+" MB): búscalo en Descargas y envíalo por WhatsApp como documento."); }
+      });
+    } else {
+      descargar(f);
+      alert("Se descargó el archivo ("+mb+" MB).\n\nEn WhatsApp: 📎 → Documento → busca “"+f.name+"” en Descargas.");
+    }
+  }).catch(function(e){$("overlay").style.display="none";alert("Error al preparar el archivo: "+e.message);});
+}
+
+/* ── Arranque ── */
+document.addEventListener("DOMContentLoaded",function(){
+  cargar(); cargarCatalogo();
+  if(S.op) $("inp-op").value=S.op;
+  if(S.items.length){ $("splash-cont").style.display="block"; $("btn-start").textContent="▶ CONTINUAR ("+S.items.length+" anotados)"; }
+  show("scr-splash");
+  $("btn-start").addEventListener("click",function(){
+    var n=$("inp-op").value.trim().toUpperCase();
+    if(!n){alert("Escribe tu nombre: así se sabe quién anotó cada cosa.");$("inp-op").focus();return;}
+    S.op=n; if(!S.creado) S.creado=new Date().toISOString(); guardar(); renderLista(); show("scr-lista");
+  });
+  $("buscar").addEventListener("input",buscar);
+  $("buscar").addEventListener("blur",function(){setTimeout(function(){$("sugs").style.display="none";},250);});
+  $("btn-listo").addEventListener("click",function(){renderLista();show("scr-lista");});
+  $("btn-del").addEventListener("click",function(){
+    var it=itemDe(detId); if(!it) return;
+    if(!confirm("¿Quitar “"+it.nombre+"” del registro?")) return;
+    it.fotos.forEach(fotoDel);
+    S.items=S.items.filter(function(x){return x.id!==detId;}); guardar(); renderLista(); show("scr-lista");
+  });
+  $("btn-fin").addEventListener("click",function(){ if(!S.items.length){alert("Todavía no anotas productos.");return;} resumen(); });
+  $("btn-enviar").addEventListener("click",function(){enviar(false);});
+  $("btn-bajar").addEventListener("click",function(){enviar(true);});
+  $("btn-volver").addEventListener("click",function(){renderLista();show("scr-lista");});
+  $("btn-nuevo").addEventListener("click",function(){
+    if(!confirm("Esto BORRA todo lo anotado en este teléfono (productos y fotos).\n\n¿Ya enviaste el archivo?")) return;
+    S={op:S.op,items:[],creado:null}; guardar(); fotosClear().then(function(){location.reload();});
+  });
+  var ua=navigator.userAgent||"";
+  if(ua.indexOf("WhatsApp")>-1||ua.indexOf("FBAN")>-1||ua.indexOf("Instagram")>-1||(ua.indexOf("wv")>-1&&ua.indexOf("Android")>-1)) $("wa-banner").style.display="flex";
+});
+</script>
+</body>
+</html>
